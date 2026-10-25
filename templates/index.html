@@ -520,6 +520,11 @@
                                         </div>
                                     </div>
                                 </div>
+                                <!-- Executive Reasoning Narrative -->
+                                <div class="alert alert-light border mt-2 mb-0 py-2 px-3 small" id="s4-drawer-narrative-box">
+                                    <div class="fw-bold text-dark mb-1"><i class="bi bi-file-earmark-text text-primary me-1"></i>Hiring Decision Reasoning:</div>
+                                    <p class="mb-0 text-muted" id="s4-drawer-narrative">--</p>
+                                </div>
                             </div>
                         </div>
 
@@ -776,6 +781,34 @@
                             </div>
                             <div class="card-body">
                                 <canvas id="chart-explain" height="260"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Executive Candidate Assessment & Selection Rationale -->
+                <div class="card border-0 shadow-sm mb-4 border-start border-4 border-primary" id="s5-reasoning-card">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="fw-bold mb-0 text-primary">
+                            <i class="bi bi-file-earmark-person-fill me-1"></i> Executive Candidate Assessment & Hiring Rationale
+                        </h6>
+                        <span class="badge bg-success" id="s5-reasoning-verdict">SHORTLISTED</span>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="fw-bold text-dark" id="s5-reasoning-headline">Candidate Assessment</h6>
+                        <p class="text-secondary mb-3" id="s5-reasoning-narrative">Detailed narrative will appear here.</p>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="p-3 bg-success-subtle rounded border border-success-subtle h-100">
+                                    <strong class="text-success d-block mb-2"><i class="bi bi-check-circle-fill me-1"></i> Primary Selection Strengths:</strong>
+                                    <ul class="mb-0 small ps-3" id="s5-reasoning-strengths"></ul>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-3 bg-danger-subtle rounded border border-danger-subtle h-100">
+                                    <strong class="text-danger d-block mb-2"><i class="bi bi-exclamation-triangle-fill me-1"></i> Deficits & Risk Factors:</strong>
+                                    <ul class="mb-0 small ps-3" id="s5-reasoning-risks"></ul>
+                                </div>
                             </div>
                         </div>
                     </div>

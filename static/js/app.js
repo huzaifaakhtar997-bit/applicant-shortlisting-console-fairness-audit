@@ -426,11 +426,16 @@ async function showInlineCriteria(enrolleeId, score, shortlisted) {
         posContainer.innerHTML = '';
         negContainer.innerHTML = '';
 
+        // Display Detailed Executive Reasoning Narrative
+        if (data.executive_reasoning) {
+            document.getElementById('s4-drawer-narrative').textContent = data.executive_reasoning.detailed_narrative;
+        }
+
         if (data.positive_drivers && data.positive_drivers.length > 0) {
             data.positive_drivers.slice(0, 4).forEach(d => {
                 const badge = document.createElement('span');
                 badge.className = 'badge bg-success-subtle text-success border border-success-subtle p-1';
-                badge.innerHTML = `+${d.contribution.toFixed(3)}: <strong>${d.feature}</strong>`;
+                badge.innerHTML = `+${d.contribution.toFixed(3)}: <strong>${d.label || d.feature}</strong>`;
                 posContainer.appendChild(badge);
             });
         } else {
@@ -441,7 +446,7 @@ async function showInlineCriteria(enrolleeId, score, shortlisted) {
             data.negative_drivers.slice(0, 4).forEach(d => {
                 const badge = document.createElement('span');
                 badge.className = 'badge bg-danger-subtle text-danger border border-danger-subtle p-1';
-                badge.innerHTML = `${d.contribution.toFixed(3)}: <strong>${d.feature}</strong>`;
+                badge.innerHTML = `${d.contribution.toFixed(3)}: <strong>${d.label || d.feature}</strong>`;
                 negContainer.appendChild(badge);
             });
         } else {
@@ -574,6 +579,35 @@ async function explainCandidate(applicantId) {
         document.getElementById('s5-profile-cdi').textContent = data.profile.city_development_index;
         document.getElementById('s5-profile-th').textContent = `${data.profile.training_hours} hrs`;
 
+        // Render Executive Reasoning Dossier Card
+        if (data.executive_reasoning) {
+            const er = data.executive_reasoning;
+            const verdictEl = document.getElementById('s5-reasoning-verdict');
+            verdictEl.className = data.shortlisted ? 'badge bg-success' : 'badge bg-secondary';
+            verdictEl.textContent = er.verdict;
+
+            document.getElementById('s5-reasoning-headline').textContent = er.headline;
+            document.getElementById('s5-reasoning-narrative').textContent = er.detailed_narrative;
+
+            const strengthsList = document.getElementById('s5-reasoning-strengths');
+            strengthsList.innerHTML = '';
+            er.key_strengths.forEach(s => {
+                const li = document.createElement('li');
+                li.className = 'mb-1';
+                li.textContent = s;
+                strengthsList.appendChild(li);
+            });
+
+            const risksList = document.getElementById('s5-reasoning-risks');
+            risksList.innerHTML = '';
+            er.key_risks.forEach(r => {
+                const li = document.createElement('li');
+                li.className = 'mb-1';
+                li.textContent = r;
+                risksList.appendChild(li);
+            });
+        }
+
         // Render Waterfall Chart
         renderExplainChart(data.top_contributions);
 
@@ -584,7 +618,10 @@ async function explainCandidate(applicantId) {
             const tr = document.createElement('tr');
             const isPos = c.contribution > 0;
             tr.innerHTML = `
-                <td><code>${c.feature}</code></td>
+                <td>
+                    <strong>${c.label || c.feature}</strong>
+                    <code class="d-block text-muted small">${c.feature}</code>
+                </td>
                 <td><span class="badge bg-light text-dark border">${c.original_column}</span></td>
                 <td>${c.value}</td>
                 <td>${c.weight.toFixed(4)}</td>
@@ -606,7 +643,7 @@ function renderExplainChart(contributions) {
     const ctx = document.getElementById('chart-explain').getContext('2d');
     if (state.charts.explain) state.charts.explain.destroy();
 
-    const labels = contributions.map(c => c.feature);
+    const labels = contributions.map(c => c.label || c.feature);
     const values = contributions.map(c => c.contribution);
     const colors = values.map(v => v >= 0 ? '#198754' : '#dc3545');
 

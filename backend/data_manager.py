@@ -275,6 +275,7 @@ class DataManager:
 
         # Precompute means and standard deviations of features
         f_means = [sum(X[i][j] for i in range(N)) / N for j in range(len(self.feature_names))]
+        self.feature_means = {feat: f_means[j] for j, feat in enumerate(self.feature_names)}
         f_stds = []
         for j in range(len(self.feature_names)):
             var = sum((X[i][j] - f_means[j]) ** 2 for i in range(N)) / N
