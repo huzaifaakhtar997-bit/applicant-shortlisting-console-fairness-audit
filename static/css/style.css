@@ -1,0 +1,81 @@
+/* FairRecruit Console Custom Styles */
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #2d3748;
+}
+
+.stat-card {
+    border-radius: 10px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08) !important;
+}
+
+.nav-pills .nav-link {
+    color: #4a5568;
+    font-weight: 500;
+    border-radius: 8px;
+    padding: 8px 16px;
+    transition: all 0.2s ease;
+}
+
+.nav-pills .nav-link:hover {
+    background-color: #edf2f7;
+    color: #1a202c;
+}
+
+.nav-pills .nav-link.active {
+    background-color: #0d6efd;
+    color: #fff !important;
+}
+
+#tab-screen6.active {
+    background-color: #dc3545 !important;
+    color: #fff !important;
+}
+
+.avatar-circle {
+    width: 80px;
+    height: 80px;
+    background-color: #e2e8f0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.table th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #4a5568;
+}
+
+.table td {
+    font-size: 0.875rem;
+}
+
+/* Violation highlight */
+.row-violation {
+    background-color: #fff5f5 !important;
+}
+
+.badge-violation {
+    background-color: #dc3545;
+    color: white;
+    font-weight: bold;
+}
+
+.delta-pos {
+    color: #198754;
+    font-weight: bold;
+}
+
+.delta-neg {
+    color: #dc3545;
+    font-weight: bold;
+}
