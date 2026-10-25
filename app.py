@@ -186,6 +186,45 @@ def get_shortlist():
     start = (page - 1) * per_page
     end = start + per_page
 
+    # Compute active shortlist selection rates across gender, age band, and institution (Beside-it Audit)
+    audit_summary = {}
+    for attr in ['gender', 'age_band', 'institution']:
+        group_counts = {}
+        group_selected = {}
+        for item in ranked_list:
+            g = item.get(attr, 'Unknown')
+            group_counts[g] = group_counts.get(g, 0) + 1
+            if item['shortlisted']:
+                group_selected[g] = group_selected.get(g, 0) + 1
+
+        attr_metrics = []
+        sr_list = []
+        for g, total_g in group_counts.items():
+            sel_g = group_selected.get(g, 0)
+            sr = sel_g / total_g if total_g > 0 else 0.0
+            sr_list.append(sr)
+            attr_metrics.append({
+                'group': g,
+                'total': total_g,
+                'selected': sel_g,
+                'selection_rate': round(sr, 4)
+            })
+
+        max_sr = max(sr_list) if sr_list else 0.0
+        min_sr = min(sr_list) if sr_list else 0.0
+        for m in attr_metrics:
+            ratio = (m['selection_rate'] / max_sr) if max_sr > 0 else 1.0
+            m['four_fifths_ratio'] = round(ratio, 4)
+            m['violates_80_rule'] = ratio < 0.8 and m['total'] >= 30
+
+        audit_summary[attr] = {
+            'groups': sorted(attr_metrics, key=lambda x: x['total'], reverse=True),
+            'max_selection_rate': round(max_sr, 4),
+            'min_selection_rate': round(min_sr, 4),
+            'selection_rate_gap': round(max_sr - min_sr, 4),
+            'adverse_impact': any(m['violates_80_rule'] for m in attr_metrics)
+        }
+
     total_shortlisted = sum(1 for x in ranked_list if x['shortlisted'])
 
     return jsonify({
@@ -197,7 +236,8 @@ def get_shortlist():
         'page': page,
         'per_page': per_page,
         'total_pages': math.ceil(len(filtered) / per_page),
-        'applicants': filtered[start:end]
+        'applicants': filtered[start:end],
+        'audit_summary': audit_summary
     })
 
 

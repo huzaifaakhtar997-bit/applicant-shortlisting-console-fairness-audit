@@ -420,116 +420,265 @@
                 </div>
             </div>
 
-            <!-- ========================================== -->
-            <!-- SCREEN 4: RANKED SHORTLIST CONSOLE         -->
-            <!-- ========================================== -->
+            <!-- ============================================================== -->
+            <!-- SCREEN 4: RANKED SHORTLIST WITH BESIDE-IT FAIRNESS AUDIT       -->
+            <!-- ============================================================== -->
             <div class="tab-pane fade" id="screen4" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
-                        <h4 class="fw-bold mb-1"><i class="bi bi-trophy text-primary me-2"></i>Screen 4: Candidate Shortlisting & Ranking Console</h4>
-                        <p class="text-muted mb-0">Ranked applicants ordered by interview qualification score. Apply threshold or Top-N filter and export shortlisted cohort.</p>
+                        <h4 class="fw-bold mb-1">
+                            <i class="bi bi-trophy text-primary me-2"></i>Screen 4: Candidate Shortlisting Console & Beside-It Fairness Audit
+                        </h4>
+                        <p class="text-muted mb-0">
+                            Ranked shortlist with criteria behind each ranking — and, beside it, a live audit showing whether the shortlist's selection rate differs across gender, age band and institution.
+                        </p>
                     </div>
-                    <div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                            <i class="bi bi-upload me-1"></i> Upload Applicant Pool
+                        </button>
                         <button class="btn btn-success" id="s4-btn-export">
                             <i class="bi bi-file-earmark-arrow-down me-1"></i> Export Shortlist (CSV)
                         </button>
                     </div>
                 </div>
 
-                <!-- Recruiter Controls -->
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-body">
+                <!-- Recruiter Shortlisting Controls -->
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-body py-3">
                         <div class="row g-3 align-items-end">
                             <div class="col-md-3">
-                                <label class="form-label fw-bold d-flex justify-content-between">
+                                <label class="form-label fw-bold d-flex justify-content-between mb-1">
                                     <span>Threshold (&tau;)</span>
                                     <span class="badge bg-primary" id="s4-thresh-display">0.50</span>
                                 </label>
                                 <input type="range" class="form-range" id="s4-thresh-slider" min="0.10" max="0.90" step="0.05" value="0.50">
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label fw-bold">Top-N Cutoff (Optional)</label>
-                                <input type="number" class="form-control" id="s4-topn-input" placeholder="e.g. 50 (leave empty for threshold)">
+                            <div class="col-md-2">
+                                <label class="form-label fw-bold mb-1">Top-N Cutoff</label>
+                                <input type="number" class="form-control form-control-sm" id="s4-topn-input" placeholder="e.g. 50">
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label fw-bold">Status Filter</label>
-                                <select class="form-select" id="s4-filter-select">
+                            <div class="col-md-2">
+                                <label class="form-label fw-bold mb-1">Status Filter</label>
+                                <select class="form-select form-select-sm" id="s4-filter-select">
                                     <option value="all">All Applicants</option>
                                     <option value="shortlisted" selected>Shortlisted Only</option>
                                     <option value="rejected">Rejected Only</option>
                                 </select>
                             </div>
-                            <div class="col-md-3">
-                                <button class="btn btn-outline-primary w-100" id="s4-btn-apply">
-                                    <i class="bi bi-filter me-1"></i> Update Shortlist
+                            <div class="col-md-2">
+                                <button class="btn btn-primary btn-sm w-100" id="s4-btn-apply">
+                                    <i class="bi bi-sliders me-1"></i> Apply Filter
                                 </button>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Shortlist Cohort Overview -->
-                <div class="row g-3 mb-4">
-                    <div class="col-md-4">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body">
-                                <span class="text-muted small text-uppercase fw-semibold">Pool Size</span>
-                                <h3 class="fw-bold text-dark mt-1" id="s4-total-applicants">19,158</h3>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body">
-                                <span class="text-muted small text-uppercase fw-semibold">Shortlisted Candidates</span>
-                                <h3 class="fw-bold text-success mt-1" id="s4-shortlisted-count">--</h3>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body">
-                                <span class="text-muted small text-uppercase fw-semibold">Overall Selection Rate</span>
-                                <h3 class="fw-bold text-primary mt-1" id="s4-selection-rate">--%</h3>
+                            <div class="col-md-3">
+                                <div class="d-flex gap-2 justify-content-end">
+                                    <span class="badge bg-light text-dark border p-2">
+                                        Pool: <strong id="s4-total-applicants">19,158</strong>
+                                    </span>
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle p-2">
+                                        Shortlisted: <strong id="s4-shortlisted-count">--</strong>
+                                    </span>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle p-2">
+                                        Rate: <strong id="s4-selection-rate">--%</strong>
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Shortlist Ranked Table -->
-                <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                        <span class="fw-bold"><i class="bi bi-list-check me-1"></i> Ranked Candidate Shortlist</span>
-                        <div class="d-flex align-items-center gap-2">
-                            <button class="btn btn-sm btn-outline-secondary" id="s4-btn-prev">&laquo; Prev</button>
-                            <span class="small text-muted" id="s4-page-info">Page 1</span>
-                            <button class="btn btn-sm btn-outline-secondary" id="s4-btn-next">Next &raquo;</button>
+                <!-- Side-by-Side Dual View: Ranked Shortlist & Criteria (Left) + Fairness Audit (Right) -->
+                <div class="row g-3">
+                    
+                    <!-- LEFT COLUMN: Ranked Candidate Shortlist with Criteria Breakdown -->
+                    <div class="col-xl-7 col-lg-12">
+                        
+                        <!-- Inline Criteria Breakdown Drawer (Visible when an applicant is clicked) -->
+                        <div class="card border-0 shadow-sm border-start border-4 border-info mb-3 d-none" id="s4-criteria-drawer">
+                            <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="bi bi-lightbulb-fill text-info me-1"></i>
+                                    <strong>Ranking Criteria for Enrollee #<span id="s4-drawer-id">--</span></strong>
+                                    <span class="badge bg-success ms-2" id="s4-drawer-status">SHORTLISTED</span>
+                                    <span class="small text-muted ms-2">Score: <strong id="s4-drawer-score">--%</strong></span>
+                                </div>
+                                <button type="button" class="btn-close btn-sm" id="s4-drawer-close" aria-label="Close"></button>
+                            </div>
+                            <div class="card-body py-2">
+                                <div class="row g-2 small">
+                                    <div class="col-md-6">
+                                        <span class="text-success fw-bold d-block mb-1"><i class="bi bi-arrow-up-circle me-1"></i>Top Factors Pushing Score UP:</span>
+                                        <div id="s4-drawer-pos-factors" class="d-flex flex-wrap gap-1">
+                                            <!-- Populated dynamically -->
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <span class="text-danger fw-bold d-block mb-1"><i class="bi bi-arrow-down-circle me-1"></i>Factors Pulling Score DOWN:</span>
+                                        <div id="s4-drawer-neg-factors" class="d-flex flex-wrap gap-1">
+                                            <!-- Populated dynamically -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ranked Table -->
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
+                                <span class="fw-bold"><i class="bi bi-list-check me-1 text-primary"></i> Ranked Shortlist Pool</span>
+                                <div class="d-flex align-items-center gap-1">
+                                    <button class="btn btn-sm btn-outline-secondary py-0 px-2" id="s4-btn-prev">&laquo;</button>
+                                    <span class="small text-muted px-1" id="s4-page-info">Page 1</span>
+                                    <button class="btn btn-sm btn-outline-secondary py-0 px-2" id="s4-btn-next">&raquo;</button>
+                                </div>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
+                                    <table class="table table-hover table-sm align-middle mb-0" id="s4-shortlist-table">
+                                        <thead class="table-light sticky-top">
+                                            <tr>
+                                                <th>Rank</th>
+                                                <th>Enrollee ID</th>
+                                                <th>Score</th>
+                                                <th>Status</th>
+                                                <th>Gender</th>
+                                                <th>Age Band</th>
+                                                <th>Institution</th>
+                                                <th>Criteria</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Populated dynamically -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0" id="s4-shortlist-table">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Rank</th>
-                                        <th>Enrollee ID</th>
-                                        <th>Interview Score</th>
-                                        <th>Status</th>
-                                        <th>Gender</th>
-                                        <th>Age Band</th>
-                                        <th>Institution</th>
-                                        <th>Education</th>
-                                        <th>Experience</th>
-                                        <th>City Dev Index</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Populated dynamically -->
-                                </tbody>
-                            </table>
+
+                    <!-- RIGHT COLUMN: BESIDE IT — Active Shortlist Fairness Audit across Gender, Age Band & Institution -->
+                    <div class="col-xl-5 col-lg-12">
+                        <div class="card border-0 shadow-sm border-start border-4 border-danger h-100">
+                            <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="fw-bold mb-0 text-danger">
+                                        <i class="bi bi-shield-check text-danger me-1"></i> Beside-It Fairness Audit
+                                    </h6>
+                                    <span class="small text-muted" style="font-size: 0.75rem;">Live Selection Rates Across Protected Groups</span>
+                                </div>
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle" id="s4-audit-overall-badge">80% Rule Check</span>
+                            </div>
+                            <div class="card-body py-2">
+                                
+                                <!-- Audit Tabs for the 3 Protected Dimensions -->
+                                <ul class="nav nav-tabs nav-fill mb-3" id="s4AuditTabs" role="tablist">
+                                    <li class="nav-item">
+                                        <button class="nav-link active py-1 small fw-bold" id="s4-tab-gender" data-bs-toggle="tab" data-bs-target="#s4-pane-gender">
+                                            <i class="bi bi-people me-1"></i> Gender
+                                        </button>
+                                    </li>
+                                    <li class="nav-item">
+                                        <button class="nav-link py-1 small fw-bold" id="s4-tab-age" data-bs-toggle="tab" data-bs-target="#s4-pane-age">
+                                            <i class="bi bi-calendar-range me-1"></i> Age Band
+                                        </button>
+                                    </li>
+                                    <li class="nav-item">
+                                        <button class="nav-link py-1 small fw-bold" id="s4-tab-inst" data-bs-toggle="tab" data-bs-target="#s4-pane-inst">
+                                            <i class="bi bi-bank me-1"></i> Institution
+                                        </button>
+                                    </li>
+                                </ul>
+
+                                <div class="tab-content" id="s4AuditTabsContent">
+                                    
+                                    <!-- GENDER AUDIT PANE -->
+                                    <div class="tab-pane fade show active" id="s4-pane-gender" role="tabpanel">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="small text-muted">Gender Selection Rates:</span>
+                                            <span class="badge bg-light text-dark border" id="s4-gender-gap-badge">Gap: --%</span>
+                                        </div>
+                                        <div id="s4-gender-bars" class="mb-3">
+                                            <!-- Dynamically populated progress bars -->
+                                        </div>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-bordered small align-middle mb-0" id="s4-gender-table">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Gender</th>
+                                                        <th>Pool</th>
+                                                        <th>Selected</th>
+                                                        <th>Rate</th>
+                                                        <th>80% Ratio</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody><!-- Populated dynamically --></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <!-- AGE BAND AUDIT PANE -->
+                                    <div class="tab-pane fade" id="s4-pane-age" role="tabpanel">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="small text-muted">Age Band Selection Rates (Proxy):</span>
+                                            <span class="badge bg-light text-dark border" id="s4-age-gap-badge">Gap: --%</span>
+                                        </div>
+                                        <div id="s4-age-bars" class="mb-3">
+                                            <!-- Dynamically populated progress bars -->
+                                        </div>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-bordered small align-middle mb-0" id="s4-age-table">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Age Band</th>
+                                                        <th>Pool</th>
+                                                        <th>Selected</th>
+                                                        <th>Rate</th>
+                                                        <th>80% Ratio</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody><!-- Populated dynamically --></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <!-- INSTITUTION AUDIT PANE -->
+                                    <div class="tab-pane fade" id="s4-pane-inst" role="tabpanel">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="small text-muted">Institution Selection Rates (Proxy):</span>
+                                            <span class="badge bg-light text-dark border" id="s4-inst-gap-badge">Gap: --%</span>
+                                        </div>
+                                        <div id="s4-inst-bars" class="mb-3">
+                                            <!-- Dynamically populated progress bars -->
+                                        </div>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-bordered small align-middle mb-0" id="s4-inst-table">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Institution</th>
+                                                        <th>Pool</th>
+                                                        <th>Selected</th>
+                                                        <th>Rate</th>
+                                                        <th>80% Ratio</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody><!-- Populated dynamically --></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                                <!-- Real-time Disparity Diagnostic Banner -->
+                                <div class="alert alert-light border mt-3 mb-0 p-2 small" id="s4-disparity-banner">
+                                    <i class="bi bi-info-circle text-primary me-1"></i>
+                                    <span id="s4-disparity-msg">Auditing selection rate parity across applicant pool.</span>
+                                </div>
+
+                            </div>
                         </div>
                     </div>
+
                 </div>
             </div>
 

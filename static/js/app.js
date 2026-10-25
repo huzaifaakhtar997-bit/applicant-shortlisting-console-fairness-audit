@@ -76,6 +76,14 @@ function initEventListeners() {
         window.location.href = `/api/shortlist?threshold=${state.threshold}&filter=${filter}&export=true`;
     });
 
+    // Screen 4: Close Criteria Drawer
+    const s4DrawerClose = document.getElementById('s4-drawer-close');
+    if (s4DrawerClose) {
+        s4DrawerClose.addEventListener('click', () => {
+            document.getElementById('s4-criteria-drawer').classList.add('d-none');
+        });
+    }
+
     // Screen 5: Explainability
     document.getElementById('s5-btn-explain').addEventListener('click', () => {
         const id = document.getElementById('s5-applicant-input').value.trim();
@@ -338,9 +346,9 @@ function renderRocCurve(points, auc) {
     });
 }
 
-// ==========================================
-// SCREEN 4: RANKED SHORTLIST CONTROLLER
-// ==========================================
+// ==============================================================
+// SCREEN 4: RANKED SHORTLIST & BESIDE-IT FAIRNESS AUDIT
+// ==============================================================
 async function loadScreen4Shortlist() {
     try {
         let url = `/api/shortlist?threshold=${state.threshold}&page=${state.currentPage}&per_page=${state.perPage}&filter=${state.filterStatus}`;
@@ -364,34 +372,166 @@ async function loadScreen4Shortlist() {
                 <td><strong>#${app.rank}</strong></td>
                 <td><code>${app.enrollee_id}</code></td>
                 <td>
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="progress flex-grow-1" style="height: 6px;">
+                    <div class="d-flex align-items-center gap-1">
+                        <div class="progress flex-grow-1" style="height: 6px; min-width: 45px;">
                             <div class="progress-bar ${app.shortlisted ? 'bg-success' : 'bg-secondary'}" style="width: ${app.score * 100}%"></div>
                         </div>
                         <span class="small fw-bold">${(app.score * 100).toFixed(1)}%</span>
                     </div>
                 </td>
                 <td>${app.shortlisted 
-                    ? '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>SHORTLISTED</span>' 
-                    : '<span class="badge bg-light text-muted border">NOT SELECTED</span>'}
+                    ? '<span class="badge bg-success py-1 px-2"><i class="bi bi-check-circle me-1"></i>YES</span>' 
+                    : '<span class="badge bg-light text-muted border py-1 px-2">NO</span>'}
                 </td>
-                <td>${app.gender}</td>
-                <td>${app.age_band}</td>
-                <td><span class="small text-truncate" style="max-width: 140px; display: inline-block;">${app.institution}</span></td>
-                <td>${app.education_level || 'N/A'}</td>
-                <td>${app.experience || 'N/A'}</td>
-                <td>${app.city_development_index}</td>
+                <td><span class="badge bg-secondary-subtle text-secondary">${app.gender}</span></td>
+                <td><span class="badge bg-info-subtle text-info">${app.age_band}</span></td>
+                <td><span class="small text-truncate" style="max-width: 110px; display: inline-block;">${app.institution}</span></td>
                 <td>
-                    <button class="btn btn-sm btn-outline-primary py-0" onclick="inspectApplicant('${app.enrollee_id}')">
-                        <i class="bi bi-search me-1"></i> Criteria
+                    <button class="btn btn-sm btn-outline-info py-0 px-2" onclick="showInlineCriteria('${app.enrollee_id}', ${app.score}, ${app.shortlisted})" title="See criteria behind this ranking">
+                        <i class="bi bi-lightbulb"></i>
                     </button>
                 </td>
             `;
             tbody.appendChild(tr);
         });
+
+        // Populate Beside-It Fairness Audit (Gender, Age Band, Institution)
+        if (data.audit_summary) {
+            renderBesideAudit(data.audit_summary);
+        }
+
     } catch (err) {
         console.error('Failed to load shortlist:', err);
     }
+}
+
+// Show criteria behind each ranking right on Screen 4
+async function showInlineCriteria(enrolleeId, score, shortlisted) {
+    const drawer = document.getElementById('s4-criteria-drawer');
+    drawer.classList.remove('d-none');
+    document.getElementById('s4-drawer-id').textContent = enrolleeId;
+    document.getElementById('s4-drawer-score').textContent = `${(score * 100).toFixed(1)}%`;
+    const statusBadge = document.getElementById('s4-drawer-status');
+    statusBadge.className = shortlisted ? 'badge bg-success ms-2' : 'badge bg-secondary ms-2';
+    statusBadge.textContent = shortlisted ? 'SHORTLISTED' : 'NOT SHORTLISTED';
+
+    const posContainer = document.getElementById('s4-drawer-pos-factors');
+    const negContainer = document.getElementById('s4-drawer-neg-factors');
+    posContainer.innerHTML = '<span class="text-muted small">Loading factors...</span>';
+    negContainer.innerHTML = '<span class="text-muted small">Loading factors...</span>';
+
+    try {
+        const res = await fetch(`/api/explain/${enrolleeId}`);
+        const data = await res.json();
+        posContainer.innerHTML = '';
+        negContainer.innerHTML = '';
+
+        if (data.positive_drivers && data.positive_drivers.length > 0) {
+            data.positive_drivers.slice(0, 4).forEach(d => {
+                const badge = document.createElement('span');
+                badge.className = 'badge bg-success-subtle text-success border border-success-subtle p-1';
+                badge.innerHTML = `+${d.contribution.toFixed(3)}: <strong>${d.feature}</strong>`;
+                posContainer.appendChild(badge);
+            });
+        } else {
+            posContainer.innerHTML = '<span class="text-muted small">No strong positive drivers</span>';
+        }
+
+        if (data.negative_drivers && data.negative_drivers.length > 0) {
+            data.negative_drivers.slice(0, 4).forEach(d => {
+                const badge = document.createElement('span');
+                badge.className = 'badge bg-danger-subtle text-danger border border-danger-subtle p-1';
+                badge.innerHTML = `${d.contribution.toFixed(3)}: <strong>${d.feature}</strong>`;
+                negContainer.appendChild(badge);
+            });
+        } else {
+            negContainer.innerHTML = '<span class="text-muted small">No strong negative drivers</span>';
+        }
+
+    } catch (e) {
+        posContainer.innerHTML = '<span class="text-danger small">Error loading criteria</span>';
+        negContainer.innerHTML = '';
+    }
+}
+
+// Render the Beside-It Fairness Audit Panel
+function renderBesideAudit(auditSummary) {
+    const hasDisparity = auditSummary.gender.adverse_impact || auditSummary.age_band.adverse_impact || auditSummary.institution.adverse_impact;
+    
+    // Overall badge
+    const overallBadge = document.getElementById('s4-audit-overall-badge');
+    if (hasDisparity) {
+        overallBadge.className = 'badge bg-danger';
+        overallBadge.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i> Disparity Detected (<0.80)';
+    } else {
+        overallBadge.className = 'badge bg-success';
+        overallBadge.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Selection Parity Compliant';
+    }
+
+    // Diagnostic message banner
+    const bannerEl = document.getElementById('s4-disparity-banner');
+    const bannerMsg = document.getElementById('s4-disparity-msg');
+    if (hasDisparity) {
+        bannerEl.className = 'alert alert-danger border-danger mt-3 mb-0 p-2 small';
+        bannerMsg.innerHTML = '<strong>Warning:</strong> Selection rate differs across demographic groups. Adjust threshold or see Screen 6 for attribute ablation.';
+    } else {
+        bannerEl.className = 'alert alert-success border-success mt-3 mb-0 p-2 small';
+        bannerMsg.innerHTML = '<strong>Compliant:</strong> Selection rate does not violate the 80% rule across groups with &ge;30 samples.';
+    }
+
+    // Render Dimension 1: Gender
+    renderAuditDimension('gender', auditSummary.gender);
+
+    // Render Dimension 2: Age Band
+    renderAuditDimension('age', auditSummary.age_band);
+
+    // Render Dimension 3: Institution
+    renderAuditDimension('inst', auditSummary.institution);
+}
+
+function renderAuditDimension(prefix, dimData) {
+    // Gap badge
+    document.getElementById(`s4-${prefix}-gap-badge`).textContent = `Gap: ${(dimData.selection_rate_gap * 100).toFixed(1)}%`;
+
+    // Progress bars container
+    const barsContainer = document.getElementById(`s4-${prefix}-bars`);
+    barsContainer.innerHTML = '';
+
+    dimData.groups.forEach(g => {
+        const ratePct = (g.selection_rate * 100).toFixed(1);
+        const barDiv = document.createElement('div');
+        barDiv.className = 'mb-2';
+        barDiv.innerHTML = `
+            <div class="d-flex justify-content-between small mb-1">
+                <span><strong>${g.group}</strong> <span class="text-muted">(${g.selected}/${g.total})</span></span>
+                <span class="${g.violates_80_rule ? 'text-danger fw-bold' : 'text-dark'}">${ratePct}% (Ratio: ${g.four_fifths_ratio.toFixed(2)})</span>
+            </div>
+            <div class="progress" style="height: 8px;">
+                <div class="progress-bar ${g.violates_80_rule ? 'bg-danger' : 'bg-primary'}" style="width: ${Math.min(100, Math.max(g.selection_rate * 250, 4))}%"></div>
+            </div>
+        `;
+        barsContainer.appendChild(barDiv);
+    });
+
+    // Mini Table
+    const tbody = document.querySelector(`#s4-${prefix}-table tbody`);
+    tbody.innerHTML = '';
+    dimData.groups.forEach(g => {
+        const tr = document.createElement('tr');
+        if (g.violates_80_rule) tr.className = 'table-danger';
+        tr.innerHTML = `
+            <td><strong>${g.group}</strong></td>
+            <td>${g.total.toLocaleString()}</td>
+            <td>${g.selected.toLocaleString()}</td>
+            <td><strong>${(g.selection_rate * 100).toFixed(1)}%</strong></td>
+            <td>
+                <span class="${g.violates_80_rule ? 'badge bg-danger' : 'text-success fw-bold'}">
+                    ${g.four_fifths_ratio.toFixed(2)} ${g.violates_80_rule ? '<i class="bi bi-exclamation-circle"></i>' : ''}
+                </span>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
 }
 
 function inspectApplicant(enrolleeId) {
