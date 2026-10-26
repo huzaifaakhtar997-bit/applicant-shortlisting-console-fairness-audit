@@ -143,20 +143,23 @@ def compute_disparity_drivers(data_manager, ml_engine, protected_attribute='gend
     X_test = data_manager.get_feature_matrix(test_rows, active_features)
 
     # Feature weights
-    if hasattr(ml_engine.model, 'coef_') and ml_engine.model.coef_:
-        weights = ml_engine.model.coef_
-    elif hasattr(ml_engine.model, 'feature_importances_') and ml_engine.model.feature_importances_:
-        weights = ml_engine.model.feature_importances_
+    if hasattr(ml_engine.model, 'coef_') and ml_engine.model.coef_ is not None:
+        try:
+            weights = [float(x) for x in ml_engine.model.coef_[0]] if hasattr(ml_engine.model.coef_[0], '__iter__') else [float(x) for x in ml_engine.model.coef_]
+        except Exception:
+            weights = [float(x) for x in ml_engine.model.coef_]
+    elif hasattr(ml_engine.model, 'feature_importances_') and ml_engine.model.feature_importances_ is not None:
+        weights = [float(x) for x in ml_engine.model.feature_importances_]
     else:
         weights = [1.0] * len(active_features)
 
     driver_results = []
     for j, feat in enumerate(active_features):
-        mean_fav = sum(X_test[i][j] for i in fav_indices) / len(fav_indices)
-        mean_dis = sum(X_test[i][j] for i in dis_indices) / len(dis_indices)
-        diff = mean_fav - mean_dis
-        w = weights[j] if j < len(weights) else 0.0
-        score = w * diff
+        mean_fav = float(sum(X_test[i][j] for i in fav_indices) / len(fav_indices))
+        mean_dis = float(sum(X_test[i][j] for i in dis_indices) / len(dis_indices))
+        diff = float(mean_fav - mean_dis)
+        w = float(weights[j]) if j < len(weights) else 0.0
+        score = float(w * diff)
 
         orig_col = data_manager.column_origin_map.get(feat, feat)
 
@@ -168,6 +171,7 @@ def compute_disparity_drivers(data_manager, ml_engine, protected_attribute='gend
             'disadvantaged_mean': round(mean_dis, 4),
             'diff': round(diff, 4),
             'driver_score': round(score, 5),
+            'disparity_impact': round(score, 5),
             'abs_impact': round(abs(score), 5),
             'favours': 'Favoured Group' if score > 0 else 'Disadvantaged Group'
         })
@@ -266,6 +270,12 @@ def compute_before_after_ablation(data_manager, ml_engine, attribute_to_drop, dr
         'before': before_state,
         'after': after_state,
         'delta': deltas,
+        'gap_before': before_state['selection_rate_gap'],
+        'gap_after': after_state['selection_rate_gap'],
+        'gap_delta': deltas['selection_rate_gap'],
+        'auc_before': before_state['auc'],
+        'auc_after': after_state['auc'],
+        'auc_delta': deltas['auc'],
         'explanation_note': (
             "If the gap barely changed, other features are acting as proxies for the dropped attribute."
         )

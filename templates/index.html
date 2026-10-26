@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Applicant Shortlisting Console with Fairness Audit</title>
+    <title>Applicant Shortlisting Console with Fairness Audit | DSC306 Data Mining</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
@@ -20,71 +22,75 @@
                 <i class="bi bi-shield-check text-primary me-2 fs-4"></i>
                 <div>
                     <span class="fw-bold">FairRecruit Console</span>
-                    <span class="d-block text-secondary small" style="font-size: 0.75rem;">Applicant Shortlisting & Algorithmic Fairness Audit</span>
+                    <span class="d-block text-secondary small" style="font-size: 0.75rem;">Applicant Shortlisting & Algorithmic Fairness Audit | DSC306 Project 5</span>
                 </div>
             </a>
-            <div class="d-flex align-items-center gap-3">
-                <span class="badge bg-secondary" id="global-model-badge">Model: Logistic Regression</span>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-secondary" id="global-model-badge">Model: Decision Tree</span>
                 <span class="badge bg-primary" id="global-thresh-badge">Threshold: 0.50</span>
-                <span class="badge bg-success" id="global-pool-badge">Pool: 19,158 Applicants</span>
+                <span class="badge bg-info text-dark" id="global-base-badge">Baseline Acc: 75.1%</span>
+                <span class="badge bg-success" id="global-pool-badge">Pool: 19,158</span>
             </div>
         </div>
     </nav>
 
-    <!-- Navigation Tabs for the 6 Screens -->
+    <!-- Navigation Tabs for the 6 Master Screens -->
     <div class="bg-white border-bottom shadow-sm">
         <div class="container-fluid px-4">
             <ul class="nav nav-pills py-2 gap-2" id="consoleTabs" role="tablist">
                 <li class="nav-item">
                     <button class="nav-link active" id="tab-screen1" data-bs-toggle="pill" data-bs-target="#screen1">
-                        <i class="bi bi-cloud-arrow-up me-1"></i> 1. Data Ingestion
+                        <i class="bi bi-database-check me-1"></i> 1. Data & Quality
                     </button>
                 </li>
                 <li class="nav-item">
                     <button class="nav-link" id="tab-screen2" data-bs-toggle="pill" data-bs-target="#screen2">
-                        <i class="bi bi-gear-wide-connected me-1"></i> 2. Preprocessing & Proxies
+                        <i class="bi bi-graph-up-arrow me-1"></i> 2. Model Performance
                     </button>
                 </li>
                 <li class="nav-item">
                     <button class="nav-link" id="tab-screen3" data-bs-toggle="pill" data-bs-target="#screen3">
-                        <i class="bi bi-cpu me-1"></i> 3. Classification Engine
+                        <i class="bi bi-person-badge me-1"></i> 3. Single Prediction
                     </button>
                 </li>
                 <li class="nav-item">
                     <button class="nav-link" id="tab-screen4" data-bs-toggle="pill" data-bs-target="#screen4">
-                        <i class="bi bi-list-ol me-1"></i> 4. Ranked Shortlist
+                        <i class="bi bi-list-check me-1"></i> 4. Batch Scoring
                     </button>
                 </li>
                 <li class="nav-item">
                     <button class="nav-link" id="tab-screen5" data-bs-toggle="pill" data-bs-target="#screen5">
-                        <i class="bi bi-search me-1"></i> 5. Explainability Breakdown
+                        <i class="bi bi-sliders me-1"></i> 5. Settings
                     </button>
                 </li>
                 <li class="nav-item">
                     <button class="nav-link fw-bold text-danger border border-danger-subtle" id="tab-screen6" data-bs-toggle="pill" data-bs-target="#screen6">
-                        <i class="bi bi-shield-exclamation me-1"></i> 6. Fairness Audit (Challenge)
+                        <i class="bi bi-shield-exclamation me-1"></i> 6. Domain Screen (Fairness Audit)
                     </button>
                 </li>
             </ul>
         </div>
     </div>
 
-    <!-- Main Container Content Area -->
+    <!-- Main Content Container -->
     <div class="container-fluid px-4 py-4">
         <div class="tab-content" id="consoleTabsContent">
 
-            <!-- ========================================== -->
-            <!-- SCREEN 1: DATA INGESTION & DEMOGRAPHICS    -->
-            <!-- ========================================== -->
+            <!-- ============================================================= -->
+            <!-- SCREEN 1: DATA & QUALITY (Stage A & B)                         -->
+            <!-- ============================================================= -->
             <div class="tab-pane fade show active" id="screen1" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
-                        <h4 class="fw-bold mb-1"><i class="bi bi-file-earmark-spreadsheet text-primary me-2"></i>Screen 1: Applicant Pool Ingestion</h4>
-                        <p class="text-muted mb-0">Inspect applicant records, class balance, and demographics across protected attributes.</p>
+                        <h4 class="fw-bold mb-1"><i class="bi bi-database-check text-primary me-2"></i>Screen 1: Data & Quality</h4>
+                        <p class="text-muted mb-0">Load the data, inspect data quality audit report (6 fault categories), run 10-point validation, view data dictionary, and download cleaned data.</p>
                     </div>
-                    <div>
-                        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
-                            <i class="bi bi-upload me-1"></i> Upload Custom Pool CSV
+                    <div class="d-flex gap-2">
+                        <a href="/api/dataset/cleaned/download" class="btn btn-outline-success">
+                            <i class="bi bi-download me-1"></i> Download Cleaned CSV with Provenance
+                        </a>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                            <i class="bi bi-upload me-1"></i> Upload Applicant Pool CSV
                         </button>
                     </div>
                 </div>
@@ -94,7 +100,7 @@
                     <div class="col-md-3">
                         <div class="card stat-card border-0 shadow-sm">
                             <div class="card-body">
-                                <span class="text-muted small text-uppercase fw-semibold">Total Applicants</span>
+                                <span class="text-muted small text-uppercase fw-semibold">Total Pool Records</span>
                                 <h3 class="fw-bold text-dark mt-1" id="s1-total-rows">19,158</h3>
                                 <span class="text-muted small">Real Kaggle HR Analytics Dataset</span>
                             </div>
@@ -103,458 +109,56 @@
                     <div class="col-md-3">
                         <div class="card stat-card border-0 shadow-sm">
                             <div class="card-body">
-                                <span class="text-muted small text-uppercase fw-semibold">Proceed to Interview</span>
-                                <h3 class="fw-bold text-success mt-1" id="s1-positive-count">4,777 (24.94%)</h3>
-                                <span class="text-muted small">Target Positive Proxy Label</span>
+                                <span class="text-muted small text-uppercase fw-semibold">Target Distribution</span>
+                                <h3 class="fw-bold text-primary mt-1" id="s1-target-split">24.9% / 75.1%</h3>
+                                <span class="text-muted small">Proceed to Interview vs Reject/Hold</span>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="card stat-card border-0 shadow-sm">
                             <div class="card-body">
-                                <span class="text-muted small text-uppercase fw-semibold">Train / Test Split</span>
-                                <h3 class="fw-bold text-info mt-1" id="s1-split-ratio">15,327 / 3,831</h3>
-                                <span class="text-muted small">Stratified 80/20 (Fixed Seed 42)</span>
+                                <span class="text-muted small text-uppercase fw-semibold">Majority-Class Baseline</span>
+                                <h3 class="fw-bold text-warning mt-1" id="s1-baseline-acc">75.07%</h3>
+                                <span class="text-muted small">ZeroR baseline (Reported beside every accuracy)</span>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="card stat-card border-0 shadow-sm">
                             <div class="card-body">
-                                <span class="text-muted small text-uppercase fw-semibold">Encoded Features</span>
-                                <h3 class="fw-bold text-primary mt-1" id="s1-feature-count">48</h3>
-                                <span class="text-muted small">One-Hot & Scaled Predictors</span>
+                                <span class="text-muted small text-uppercase fw-semibold">Cleaned Features</span>
+                                <h3 class="fw-bold text-success mt-1" id="s1-total-features">34</h3>
+                                <span class="text-muted small">Encoded + 3 Derived Proxies</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Demographic Distribution Charts -->
-                <div class="row g-3 mb-4">
-                    <div class="col-md-4">
+                <!-- Fault Categories Audit & 10 Assertions Validation -->
+                <div class="row g-4 mb-4">
+                    <!-- Fault Categories Audit (Stage B) -->
+                    <div class="col-lg-7">
                         <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white fw-bold py-3">
-                                <i class="bi bi-people me-1 text-primary"></i> Gender Distribution
+                            <div class="card-header bg-white py-3">
+                                <h5 class="card-title fw-bold mb-0">
+                                    <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Data Quality Audit (6 Fault Categories — Lecture 2)
+                                </h5>
                             </div>
                             <div class="card-body">
-                                <canvas id="chart-gender" height="220"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white fw-bold py-3">
-                                <i class="bi bi-calendar-range me-1 text-info"></i> Age Band Distribution (Proxy)
-                            </div>
-                            <div class="card-body">
-                                <canvas id="chart-age" height="220"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white fw-bold py-3">
-                                <i class="bi bi-bank me-1 text-warning"></i> Institution Distribution (Proxy)
-                            </div>
-                            <div class="card-body">
-                                <canvas id="chart-institution" height="220"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Raw Data Preview Table -->
-                <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                        <span class="fw-bold"><i class="bi bi-table me-1"></i> Applicant Pool Preview (First 10 Records)</span>
-                        <span class="badge bg-light text-dark border">Showing 10 of 19,158</span>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover table-striped align-middle mb-0" id="s1-preview-table">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Enrollee ID</th>
-                                        <th>Gender</th>
-                                        <th>Age Band (Proxy)</th>
-                                        <th>Institution (Proxy)</th>
-                                        <th>Education</th>
-                                        <th>Experience</th>
-                                        <th>City Dev Index</th>
-                                        <th>Company Size</th>
-                                        <th>Interview Target</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Populated via JavaScript -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ========================================== -->
-            <!-- SCREEN 2: PREPROCESSING & PROXY DETECTION  -->
-            <!-- ========================================== -->
-            <div class="tab-pane fade" id="screen2" role="tabpanel">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div>
-                        <h4 class="fw-bold mb-1"><i class="bi bi-diagram-3 text-primary me-2"></i>Screen 2: Preprocessing & Proxy Feature Intelligence</h4>
-                        <p class="text-muted mb-0">Imputation strategies, one-hot encoding, and correlation analysis showing which features act as proxies for protected attributes.</p>
-                    </div>
-                </div>
-
-                <!-- Missing Values & Encoding Summary -->
-                <div class="row g-3 mb-4">
-                    <div class="col-md-6">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white fw-bold py-3">
-                                <i class="bi bi-wrench-adjustable me-1 text-primary"></i> Missing Value Handling Strategy
-                            </div>
-                            <div class="card-body">
-                                <ul class="list-group list-group-flush small">
-                                    <li class="list-group-item d-flex justify-content-between">
-                                        <span><strong>Numerical Columns</strong> (<code>city_development_index</code>, <code>training_hours</code>)</span>
-                                        <span class="badge bg-primary">Median Imputation</span>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between">
-                                        <span><strong>Categorical Columns</strong> (<code>company_size</code>, <code>gender</code>, etc.)</span>
-                                        <span class="badge bg-secondary">Imputed as "Unknown"</span>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between">
-                                        <span><strong>City Development Index Median</strong></span>
-                                        <span class="badge bg-light text-dark border" id="s2-cdi-median">0.903</span>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between">
-                                        <span><strong>Training Hours Median</strong></span>
-                                        <span class="badge bg-light text-dark border" id="s2-th-median">47.0 hrs</span>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white fw-bold py-3">
-                                <i class="bi bi-shuffle me-1 text-success"></i> Categorical Encoding Summary
-                            </div>
-                            <div class="card-body">
-                                <p class="small text-muted mb-2">All categorical variables are one-hot encoded into binary vectors to eliminate artificial ordering bias:</p>
-                                <div class="d-flex flex-wrap gap-2" id="s2-encoding-badges">
-                                    <!-- Populated dynamically -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Proxy Correlation Detection Table -->
-                <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-white py-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="fw-bold mb-0"><i class="bi bi-shield-shaded me-1 text-danger"></i> Proxy Detection Table: Correlation with Protected Attributes</h6>
-                                <span class="small text-muted">Identifies neutral features that correlate strongly with Gender, Age Band, or Institution.</span>
-                            </div>
-                            <span class="badge bg-danger-subtle text-danger border border-danger">Proxy Alert Threshold &ge; 0.25</span>
-                        </div>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0" id="s2-proxy-table">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Feature</th>
-                                        <th>Original Column</th>
-                                        <th>Corr with Gender</th>
-                                        <th>Corr with Age Band</th>
-                                        <th>Corr with Institution</th>
-                                        <th>Max Correlation</th>
-                                        <th>Highest Correlated Group</th>
-                                        <th>Proxy Risk Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Populated dynamically -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ========================================== -->
-            <!-- SCREEN 3: CLASSIFICATION ENGINE            -->
-            <!-- ========================================== -->
-            <div class="tab-pane fade" id="screen3" role="tabpanel">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div>
-                        <h4 class="fw-bold mb-1"><i class="bi bi-sliders2 text-primary me-2"></i>Screen 3: Binary Classification Engine</h4>
-                        <p class="text-muted mb-0">Train Logistic Regression or Random Forest, evaluate ROC-AUC, confusion matrix, and tune threshold.</p>
-                    </div>
-                </div>
-
-                <!-- Model Tuning Controls Card -->
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-body">
-                        <div class="row g-3 align-items-end">
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">Mining Model</label>
-                                <select class="form-select" id="s3-model-select">
-                                    <option value="logistic_regression" selected>Logistic Regression (Interpretable Linear Model)</option>
-                                    <option value="random_forest">Random Forest Classifier (Ensemble)</option>
-                                </select>
-                            </div>
-                            <div class="col-md-5">
-                                <label class="form-label fw-bold d-flex justify-content-between">
-                                    <span>Shortlisting Probability Threshold (&tau;)</span>
-                                    <span class="badge bg-primary" id="s3-thresh-val">0.50</span>
-                                </label>
-                                <input type="range" class="form-range" id="s3-thresh-slider" min="0.10" max="0.90" step="0.05" value="0.50">
-                            </div>
-                            <div class="col-md-3">
-                                <button class="btn btn-primary w-100" id="s3-btn-train">
-                                    <i class="bi bi-play-circle me-1"></i> Retrain & Evaluate
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Evaluation Metric KPIs -->
-                <div class="row g-3 mb-4">
-                    <div class="col">
-                        <div class="card border-0 shadow-sm text-center">
-                            <div class="card-body">
-                                <span class="text-muted small text-uppercase fw-semibold">Accuracy</span>
-                                <h3 class="fw-bold text-dark mt-1" id="s3-metric-acc">--</h3>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col">
-                        <div class="card border-0 shadow-sm text-center">
-                            <div class="card-body">
-                                <span class="text-muted small text-uppercase fw-semibold">Precision</span>
-                                <h3 class="fw-bold text-primary mt-1" id="s3-metric-prec">--</h3>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col">
-                        <div class="card border-0 shadow-sm text-center">
-                            <div class="card-body">
-                                <span class="text-muted small text-uppercase fw-semibold">Recall</span>
-                                <h3 class="fw-bold text-success mt-1" id="s3-metric-recall">--</h3>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col">
-                        <div class="card border-0 shadow-sm text-center">
-                            <div class="card-body">
-                                <span class="text-muted small text-uppercase fw-semibold">F1 Score</span>
-                                <h3 class="fw-bold text-info mt-1" id="s3-metric-f1">--</h3>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col">
-                        <div class="card border-0 shadow-sm text-center">
-                            <div class="card-body">
-                                <span class="text-muted small text-uppercase fw-semibold">ROC-AUC</span>
-                                <h3 class="fw-bold text-warning mt-1" id="s3-metric-auc">--</h3>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Confusion Matrix & ROC Curve -->
-                <div class="row g-3">
-                    <div class="col-md-5">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white fw-bold py-3">
-                                <i class="bi bi-grid-3x3 me-1 text-primary"></i> Confusion Matrix (Test Set)
-                            </div>
-                            <div class="card-body d-flex flex-column justify-content-center">
-                                <div class="row g-2 text-center">
-                                    <div class="col-6">
-                                        <div class="p-3 bg-light rounded border">
-                                            <span class="small text-muted d-block">True Negative (TN)</span>
-                                            <h4 class="fw-bold text-dark mt-1" id="cm-tn">--</h4>
-                                            <span class="badge bg-secondary">Correctly Rejected</span>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="p-3 bg-danger-subtle rounded border border-danger-subtle">
-                                            <span class="small text-danger d-block">False Positive (FP)</span>
-                                            <h4 class="fw-bold text-danger mt-1" id="cm-fp">--</h4>
-                                            <span class="badge bg-danger">False Alarm</span>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="p-3 bg-warning-subtle rounded border border-warning-subtle">
-                                            <span class="small text-warning-emphasis d-block">False Negative (FN)</span>
-                                            <h4 class="fw-bold text-warning-emphasis mt-1" id="cm-fn">--</h4>
-                                            <span class="badge bg-warning text-dark">Missed Candidate</span>
-                                        </div>
-                                    </div>
-                                    <div class="col-6">
-                                        <div class="p-3 bg-success-subtle rounded border border-success-subtle">
-                                            <span class="small text-success d-block">True Positive (TP)</span>
-                                            <h4 class="fw-bold text-success mt-1" id="cm-tp">--</h4>
-                                            <span class="badge bg-success">Correctly Shortlisted</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-7">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white fw-bold py-3">
-                                <i class="bi bi-graph-up me-1 text-primary"></i> Receiver Operating Characteristic (ROC Curve)
-                            </div>
-                            <div class="card-body">
-                                <canvas id="chart-roc" height="230"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ============================================================== -->
-            <!-- SCREEN 4: RANKED SHORTLIST WITH BESIDE-IT FAIRNESS AUDIT       -->
-            <!-- ============================================================== -->
-            <div class="tab-pane fade" id="screen4" role="tabpanel">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div>
-                        <h4 class="fw-bold mb-1">
-                            <i class="bi bi-trophy text-primary me-2"></i>Screen 4: Candidate Shortlisting Console & Beside-It Fairness Audit
-                        </h4>
-                        <p class="text-muted mb-0">
-                            Ranked shortlist with criteria behind each ranking — and, beside it, a live audit showing whether the shortlist's selection rate differs across gender, age band and institution.
-                        </p>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
-                            <i class="bi bi-upload me-1"></i> Upload Applicant Pool
-                        </button>
-                        <button class="btn btn-success" id="s4-btn-export">
-                            <i class="bi bi-file-earmark-arrow-down me-1"></i> Export Shortlist (CSV)
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Recruiter Shortlisting Controls -->
-                <div class="card border-0 shadow-sm mb-3">
-                    <div class="card-body py-3">
-                        <div class="row g-3 align-items-end">
-                            <div class="col-md-3">
-                                <label class="form-label fw-bold d-flex justify-content-between mb-1">
-                                    <span>Threshold (&tau;)</span>
-                                    <span class="badge bg-primary" id="s4-thresh-display">0.50</span>
-                                </label>
-                                <input type="range" class="form-range" id="s4-thresh-slider" min="0.10" max="0.90" step="0.05" value="0.50">
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label fw-bold mb-1">Top-N Cutoff</label>
-                                <input type="number" class="form-control form-control-sm" id="s4-topn-input" placeholder="e.g. 50">
-                            </div>
-                            <div class="col-md-2">
-                                <label class="form-label fw-bold mb-1">Status Filter</label>
-                                <select class="form-select form-select-sm" id="s4-filter-select">
-                                    <option value="all">All Applicants</option>
-                                    <option value="shortlisted" selected>Shortlisted Only</option>
-                                    <option value="rejected">Rejected Only</option>
-                                </select>
-                            </div>
-                            <div class="col-md-2">
-                                <button class="btn btn-primary btn-sm w-100" id="s4-btn-apply">
-                                    <i class="bi bi-sliders me-1"></i> Apply Filter
-                                </button>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="d-flex gap-2 justify-content-end">
-                                    <span class="badge bg-light text-dark border p-2">
-                                        Pool: <strong id="s4-total-applicants">19,158</strong>
-                                    </span>
-                                    <span class="badge bg-success-subtle text-success border border-success-subtle p-2">
-                                        Shortlisted: <strong id="s4-shortlisted-count">--</strong>
-                                    </span>
-                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle p-2">
-                                        Rate: <strong id="s4-selection-rate">--%</strong>
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Side-by-Side Dual View: Ranked Shortlist & Criteria (Left) + Fairness Audit (Right) -->
-                <div class="row g-3">
-                    
-                    <!-- LEFT COLUMN: Ranked Candidate Shortlist with Criteria Breakdown -->
-                    <div class="col-xl-7 col-lg-12">
-                        
-                        <!-- Inline Criteria Breakdown Drawer (Visible when an applicant is clicked) -->
-                        <div class="card border-0 shadow-sm border-start border-4 border-info mb-3 d-none" id="s4-criteria-drawer">
-                            <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
-                                <div>
-                                    <i class="bi bi-lightbulb-fill text-info me-1"></i>
-                                    <strong>Ranking Criteria for Enrollee #<span id="s4-drawer-id">--</span></strong>
-                                    <span class="badge bg-success ms-2" id="s4-drawer-status">SHORTLISTED</span>
-                                    <span class="small text-muted ms-2">Score: <strong id="s4-drawer-score">--%</strong></span>
-                                </div>
-                                <button type="button" class="btn-close btn-sm" id="s4-drawer-close" aria-label="Close"></button>
-                            </div>
-                            <div class="card-body py-2">
-                                <div class="row g-2 small">
-                                    <div class="col-md-6">
-                                        <span class="text-success fw-bold d-block mb-1"><i class="bi bi-arrow-up-circle me-1"></i>Top Factors Pushing Score UP:</span>
-                                        <div id="s4-drawer-pos-factors" class="d-flex flex-wrap gap-1">
-                                            <!-- Populated dynamically -->
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <span class="text-danger fw-bold d-block mb-1"><i class="bi bi-arrow-down-circle me-1"></i>Factors Pulling Score DOWN:</span>
-                                        <div id="s4-drawer-neg-factors" class="d-flex flex-wrap gap-1">
-                                            <!-- Populated dynamically -->
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- Executive Reasoning Narrative -->
-                                <div class="alert alert-light border mt-2 mb-0 py-2 px-3 small" id="s4-drawer-narrative-box">
-                                    <div class="fw-bold text-dark mb-1"><i class="bi bi-file-earmark-text text-primary me-1"></i>Hiring Decision Reasoning:</div>
-                                    <p class="mb-0 text-muted" id="s4-drawer-narrative">--</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Ranked Table -->
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
-                                <span class="fw-bold"><i class="bi bi-list-check me-1 text-primary"></i> Ranked Shortlist Pool</span>
-                                <div class="d-flex align-items-center gap-1">
-                                    <button class="btn btn-sm btn-outline-secondary py-0 px-2" id="s4-btn-prev">&laquo;</button>
-                                    <span class="small text-muted px-1" id="s4-page-info">Page 1</span>
-                                    <button class="btn btn-sm btn-outline-secondary py-0 px-2" id="s4-btn-next">&raquo;</button>
-                                </div>
-                            </div>
-                            <div class="card-body p-0">
-                                <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
-                                    <table class="table table-hover table-sm align-middle mb-0" id="s4-shortlist-table">
-                                        <thead class="table-light sticky-top">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0" id="faults-table">
+                                        <thead class="table-light">
                                             <tr>
-                                                <th>Rank</th>
-                                                <th>Enrollee ID</th>
-                                                <th>Score</th>
-                                                <th>Status</th>
-                                                <th>Gender</th>
-                                                <th>Age Band</th>
-                                                <th>Institution</th>
-                                                <th>Criteria</th>
+                                                <th>Fault Category</th>
+                                                <th>Affected Field</th>
+                                                <th>Detection Expression</th>
+                                                <th>Records</th>
+                                                <th>Remediation</th>
                                             </tr>
                                         </thead>
-                                        <tbody>
-                                            <!-- Populated dynamically -->
+                                        <tbody id="faults-tbody">
+                                            <!-- Injected via JavaScript -->
                                         </tbody>
                                     </table>
                                 </div>
@@ -562,522 +166,694 @@
                         </div>
                     </div>
 
-                    <!-- RIGHT COLUMN: BESIDE IT — Active Shortlist Fairness Audit across Gender, Age Band & Institution -->
-                    <div class="col-xl-5 col-lg-12">
-                        <div class="card border-0 shadow-sm border-start border-4 border-danger h-100">
-                            <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="fw-bold mb-0 text-danger">
-                                        <i class="bi bi-shield-check text-danger me-1"></i> Beside-It Fairness Audit
-                                    </h6>
-                                    <span class="small text-muted" style="font-size: 0.75rem;">Live Selection Rates Across Protected Groups</span>
-                                </div>
-                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle" id="s4-audit-overall-badge">80% Rule Check</span>
+                    <!-- 10 Assertions Validate() Function Report (Stage B) -->
+                    <div class="col-lg-5">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                                <h5 class="card-title fw-bold mb-0">
+                                    <i class="bi bi-patch-check-fill text-success me-2"></i>10-Assertion validate() Engine
+                                </h5>
+                                <span class="badge bg-success" id="validate-status-badge">Cleaned: PASS</span>
                             </div>
-                            <div class="card-body py-2">
-                                
-                                <!-- Audit Tabs for the 3 Protected Dimensions -->
-                                <ul class="nav nav-tabs nav-fill mb-3" id="s4AuditTabs" role="tablist">
-                                    <li class="nav-item">
-                                        <button class="nav-link active py-1 small fw-bold" id="s4-tab-gender" data-bs-toggle="tab" data-bs-target="#s4-pane-gender">
-                                            <i class="bi bi-people me-1"></i> Gender
-                                        </button>
-                                    </li>
-                                    <li class="nav-item">
-                                        <button class="nav-link py-1 small fw-bold" id="s4-tab-age" data-bs-toggle="tab" data-bs-target="#s4-pane-age">
-                                            <i class="bi bi-calendar-range me-1"></i> Age Band
-                                        </button>
-                                    </li>
-                                    <li class="nav-item">
-                                        <button class="nav-link py-1 small fw-bold" id="s4-tab-inst" data-bs-toggle="tab" data-bs-target="#s4-pane-inst">
-                                            <i class="bi bi-bank me-1"></i> Institution
-                                        </button>
-                                    </li>
+                            <div class="card-body">
+                                <p class="small text-muted mb-3">
+                                    A strict <code>validate()</code> function executing 10 data integrity assertions.
+                                    It <b>passes 100% on cleaned data</b> and <b>fails on the raw dataset</b> as required by Stage B.
+                                </p>
+                                <ul class="list-group list-group-flush small" id="validate-list">
+                                    <!-- Injected via JavaScript -->
                                 </ul>
-
-                                <div class="tab-content" id="s4AuditTabsContent">
-                                    
-                                    <!-- GENDER AUDIT PANE -->
-                                    <div class="tab-pane fade show active" id="s4-pane-gender" role="tabpanel">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <span class="small text-muted">Gender Selection Rates:</span>
-                                            <span class="badge bg-light text-dark border" id="s4-gender-gap-badge">Gap: --%</span>
-                                        </div>
-                                        <div id="s4-gender-bars" class="mb-3">
-                                            <!-- Dynamically populated progress bars -->
-                                        </div>
-                                        <div class="table-responsive">
-                                            <table class="table table-sm table-bordered small align-middle mb-0" id="s4-gender-table">
-                                                <thead class="table-light">
-                                                    <tr>
-                                                        <th>Gender</th>
-                                                        <th>Pool</th>
-                                                        <th>Selected</th>
-                                                        <th>Rate</th>
-                                                        <th>80% Ratio</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody><!-- Populated dynamically --></tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-
-                                    <!-- AGE BAND AUDIT PANE -->
-                                    <div class="tab-pane fade" id="s4-pane-age" role="tabpanel">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <span class="small text-muted">Age Band Selection Rates (Proxy):</span>
-                                            <span class="badge bg-light text-dark border" id="s4-age-gap-badge">Gap: --%</span>
-                                        </div>
-                                        <div id="s4-age-bars" class="mb-3">
-                                            <!-- Dynamically populated progress bars -->
-                                        </div>
-                                        <div class="table-responsive">
-                                            <table class="table table-sm table-bordered small align-middle mb-0" id="s4-age-table">
-                                                <thead class="table-light">
-                                                    <tr>
-                                                        <th>Age Band</th>
-                                                        <th>Pool</th>
-                                                        <th>Selected</th>
-                                                        <th>Rate</th>
-                                                        <th>80% Ratio</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody><!-- Populated dynamically --></tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-
-                                    <!-- INSTITUTION AUDIT PANE -->
-                                    <div class="tab-pane fade" id="s4-pane-inst" role="tabpanel">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <span class="small text-muted">Institution Selection Rates (Proxy):</span>
-                                            <span class="badge bg-light text-dark border" id="s4-inst-gap-badge">Gap: --%</span>
-                                        </div>
-                                        <div id="s4-inst-bars" class="mb-3">
-                                            <!-- Dynamically populated progress bars -->
-                                        </div>
-                                        <div class="table-responsive">
-                                            <table class="table table-sm table-bordered small align-middle mb-0" id="s4-inst-table">
-                                                <thead class="table-light">
-                                                    <tr>
-                                                        <th>Institution</th>
-                                                        <th>Pool</th>
-                                                        <th>Selected</th>
-                                                        <th>Rate</th>
-                                                        <th>80% Ratio</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody><!-- Populated dynamically --></tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-
-                                </div>
-
-                                <!-- Real-time Disparity Diagnostic Banner -->
-                                <div class="alert alert-light border mt-3 mb-0 p-2 small" id="s4-disparity-banner">
-                                    <i class="bi bi-info-circle text-primary me-1"></i>
-                                    <span id="s4-disparity-msg">Auditing selection rate parity across applicant pool.</span>
-                                </div>
-
                             </div>
                         </div>
                     </div>
-
-                </div>
-            </div>
-
-            <!-- ========================================== -->
-            <!-- SCREEN 5: EXPLAINABILITY BREAKDOWN         -->
-            <!-- ========================================== -->
-            <div class="tab-pane fade" id="screen5" role="tabpanel">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div>
-                        <h4 class="fw-bold mb-1"><i class="bi bi-lightbulb text-primary me-2"></i>Screen 5: Decision Criteria Explainability</h4>
-                        <p class="text-muted mb-0">Local feature attribution per applicant showing which factors pushed their score up or down.</p>
-                    </div>
                 </div>
 
-                <!-- Candidate Selector -->
+                <!-- Before & After Repair Table -->
                 <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-body">
-                        <div class="row g-3 align-items-end">
-                            <div class="col-md-5">
-                                <label class="form-label fw-bold">Select Applicant to Inspect</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="bi bi-person"></i></span>
-                                    <input type="text" class="form-control" id="s5-applicant-input" placeholder="Enter Enrollee ID (e.g. 8949)">
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <button class="btn btn-primary w-100" id="s5-btn-explain">
-                                    <i class="bi bi-search me-1"></i> Explain Candidate
-                                </button>
-                            </div>
-                            <div class="col-md-4">
-                                <span class="small text-muted d-block">Attribution Formula:</span>
-                                <span class="badge bg-light text-dark border font-monospace">Contribution = &beta;<sub>j</sub> &times; x<sub>j</sub></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Candidate Profile & Attribution Waterfall -->
-                <div class="row g-3 mb-4">
-                    <!-- Left: Profile Summary -->
-                    <div class="col-md-4">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white fw-bold py-3">
-                                <i class="bi bi-person-badge me-1 text-primary"></i> Candidate Credentials
-                            </div>
-                            <div class="card-body">
-                                <div class="text-center mb-3">
-                                    <div class="avatar-circle mx-auto mb-2">
-                                        <i class="bi bi-person text-secondary fs-1"></i>
-                                    </div>
-                                    <h5 class="fw-bold mb-0" id="s5-profile-id">Enrollee #--</h5>
-                                    <span class="badge bg-success mt-1" id="s5-profile-status">STATUS</span>
-                                </div>
-                                <ul class="list-group list-group-flush small">
-                                    <li class="list-group-item d-flex justify-content-between">
-                                        <span class="text-muted">Interview Probability</span>
-                                        <strong id="s5-profile-score">--%</strong>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between">
-                                        <span class="text-muted">Gender</span>
-                                        <span id="s5-profile-gender">--</span>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between">
-                                        <span class="text-muted">Age Band</span>
-                                        <span id="s5-profile-age">--</span>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between">
-                                        <span class="text-muted">Institution</span>
-                                        <span id="s5-profile-inst">--</span>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between">
-                                        <span class="text-muted">Education Level</span>
-                                        <span id="s5-profile-edu">--</span>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between">
-                                        <span class="text-muted">City Dev Index</span>
-                                        <span id="s5-profile-cdi">--</span>
-                                    </li>
-                                    <li class="list-group-item d-flex justify-content-between">
-                                        <span class="text-muted">Training Hours</span>
-                                        <span id="s5-profile-th">--</span>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Right: Attribution Bar Chart -->
-                    <div class="col-md-8">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-header bg-white fw-bold py-3 d-flex justify-content-between align-items-center">
-                                <span><i class="bi bi-bar-chart-steps me-1 text-primary"></i> Decision Criteria Attribution</span>
-                                <span class="badge bg-light text-dark border">Green = Pushed Score UP | Red = Pushed Score DOWN</span>
-                            </div>
-                            <div class="card-body">
-                                <canvas id="chart-explain" height="260"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Executive Candidate Assessment & Selection Rationale -->
-                <div class="card border-0 shadow-sm mb-4 border-start border-4 border-primary" id="s5-reasoning-card">
-                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                        <h6 class="fw-bold mb-0 text-primary">
-                            <i class="bi bi-file-earmark-person-fill me-1"></i> Executive Candidate Assessment & Hiring Rationale
-                        </h6>
-                        <span class="badge bg-success" id="s5-reasoning-verdict">SHORTLISTED</span>
+                    <div class="card-header bg-white py-3">
+                        <h5 class="card-title fw-bold mb-0">
+                            <i class="bi bi-arrow-left-right text-info me-2"></i>Before-and-After Repair Provenance Table (Stage B)
+                        </h5>
                     </div>
                     <div class="card-body">
-                        <h6 class="fw-bold text-dark" id="s5-reasoning-headline">Candidate Assessment</h6>
-                        <p class="text-secondary mb-3" id="s5-reasoning-narrative">Detailed narrative will appear here.</p>
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <div class="p-3 bg-success-subtle rounded border border-success-subtle h-100">
-                                    <strong class="text-success d-block mb-2"><i class="bi bi-check-circle-fill me-1"></i> Primary Selection Strengths:</strong>
-                                    <ul class="mb-0 small ps-3" id="s5-reasoning-strengths"></ul>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="p-3 bg-danger-subtle rounded border border-danger-subtle h-100">
-                                    <strong class="text-danger d-block mb-2"><i class="bi bi-exclamation-triangle-fill me-1"></i> Deficits & Risk Factors:</strong>
-                                    <ul class="mb-0 small ps-3" id="s5-reasoning-risks"></ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Criteria Detail Table -->
-                <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-white py-3 fw-bold">
-                        <i class="bi bi-list-nested me-1"></i> Detailed Feature Impact Table
-                    </div>
-                    <div class="card-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0" id="s5-explain-table">
-                                <thead class="table-light">
+                            <table class="table table-bordered table-striped align-middle mb-0">
+                                <thead class="table-dark">
                                     <tr>
-                                        <th>Predictor Feature</th>
-                                        <th>Original Column</th>
-                                        <th>Candidate Value</th>
-                                        <th>Model Coefficient (&beta;)</th>
-                                        <th>Net Contribution</th>
-                                        <th>Direction</th>
+                                        <th>Repaired Field</th>
+                                        <th>Fault Category</th>
+                                        <th>Detection Expression</th>
+                                        <th>Faults Before</th>
+                                        <th>Faults After</th>
+                                        <th>Repair Action & Provenance Column</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <!-- Populated dynamically -->
+                                <tbody id="before-after-tbody">
+                                    <!-- Injected via JavaScript -->
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
+
+                <!-- Data Dictionary & Written Statement of Excluded Columns (Stage A) -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="card-title fw-bold mb-0">
+                            <i class="bi bi-book-half text-primary me-2"></i>Data Dictionary & Measurement Types (Stage A)
+                        </h5>
+                        <span class="badge bg-light text-dark border">Nominal, Ordinal, Interval, Ratio</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning border-warning-subtle small mb-3">
+                            <h6 class="fw-bold mb-1"><i class="bi bi-shield-slash me-1"></i>Statement of Excluded Columns:</h6>
+                            <p class="mb-1"><b>1. <code>enrollee_id</code>:</b> Unique administrative database key (19,158 distinct IDs). Excluded from feature space to prevent identity memorization and leakage.</p>
+                            <p class="mb-0"><b>2. <code>target</code>:</b> Ground-truth hiring outcome (Proceed to interview). Unknown at the exact moment shortlisting is performed. Strictly excluded from input predictors.</p>
+                        </div>
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th>Column</th>
+                                        <th>Measurement Type</th>
+                                        <th>Plausible Range</th>
+                                        <th>Role in Product</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="data-dictionary-tbody">
+                                    <!-- Injected via JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
-            <!-- ========================================== -->
-            <!-- SCREEN 6: FAIRNESS DASHBOARD (MAIN CHALLENGE)-->
-            <!-- ========================================== -->
+            <!-- ============================================================= -->
+            <!-- SCREEN 2: MODEL PERFORMANCE (Stage C, D, E)                   -->
+            <!-- ============================================================= -->
+            <div class="tab-pane fade" id="screen2" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h4 class="fw-bold mb-1"><i class="bi bi-graph-up-arrow text-primary me-2"></i>Screen 2: Model Performance</h4>
+                        <p class="text-muted mb-0">Compare at least three classifiers from three distinct families on the same test set, with majority-class baseline beside every figure, ROC curves, and confusion matrix.</p>
+                    </div>
+                    <button class="btn btn-outline-primary" id="btn-refresh-models">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Re-evaluate Models
+                    </button>
+                </div>
+
+                <!-- Recruiter Metrics Written Justification (Stage E) -->
+                <div class="alert alert-primary border-primary-subtle d-flex align-items-start gap-3 mb-4">
+                    <i class="bi bi-info-circle-fill fs-4 mt-1 text-primary"></i>
+                    <div>
+                        <h6 class="fw-bold mb-1">Written Justification of Metrics Beyond Accuracy (Stage E):</h6>
+                        <p class="mb-1 small">
+                            • <b>Precision (Positive Predictive Value):</b> In corporate shortlisting, recruiter and hiring manager interview bandwidth is tightly capped. False positives waste hundreds of expensive interviewer hours on unqualified candidates.
+                        </p>
+                        <p class="mb-0 small">
+                            • <b>Recall (True Positive Rate / Sensitivity):</b> The opportunity cost of a false negative is severe: failing to shortlist a top data scientist allows competitor firms to hire them. High recall guarantees qualified applicants are not missed.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Three Model Families Comparison Table (Stage D & E) -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white py-3">
+                        <h5 class="card-title fw-bold mb-0">
+                            <i class="bi bi-table text-primary me-2"></i>Multi-Model Family Benchmarking (Same 80/20 Test Split)
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover align-middle mb-0">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Model Classifier</th>
+                                        <th>Model Family</th>
+                                        <th>Accuracy <span class="badge bg-warning text-dark">Baseline Beside</span></th>
+                                        <th>Precision</th>
+                                        <th>Recall</th>
+                                        <th>F1-Score</th>
+                                        <th>ROC-AUC</th>
+                                        <th>5-Fold CV Spread (Training Set)</th>
+                                        <th>Explanation Mechanism</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="model-comparison-tbody">
+                                    <!-- Injected via JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Feature Selection vs PCA Comparison (Stage C) -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white py-3">
+                        <h5 class="card-title fw-bold mb-0">
+                            <i class="bi bi-pie-chart text-secondary me-2"></i>Feature Subset Selection vs. PCA Dimensionality Reduction (Stage C)
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="small text-muted mb-3">
+                            <b>Rescaling Decisions:</b> (1) <i>Decision Tree:</i> Rescaling NOT needed (split points are invariant to monotonic scaling). (2) <i>Naïve Bayes:</i> Variances normalized per class. (3) <i>k-Nearest Neighbours:</i> Rescaling <b>strictly required</b>; otherwise Euclidean distance is overwhelmed by <code>training_hours</code> (1-336) compared to <code>city_development_index</code> (0.4-0.9).
+                        </p>
+                        <div class="table-responsive">
+                            <table class="table table-bordered align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Preprocessing Technique</th>
+                                        <th>Input Dimension</th>
+                                        <th>Accuracy</th>
+                                        <th>Majority Baseline</th>
+                                        <th>ROC-AUC</th>
+                                        <th>Precision</th>
+                                        <th>Recall</th>
+                                        <th>Interpretability Rating</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pca-comparison-tbody">
+                                    <!-- Injected via JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts: ROC Curve & Confusion Matrix -->
+                <div class="row g-4 mb-4">
+                    <div class="col-lg-7">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white py-3">
+                                <h5 class="card-title fw-bold mb-0"><i class="bi bi-bezier2 text-primary me-2"></i>ROC Curve & Operating Threshold Points</h5>
+                            </div>
+                            <div class="card-body">
+                                <div style="height: 320px;">
+                                    <canvas id="s2-roc-chart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-5">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white py-3">
+                                <h5 class="card-title fw-bold mb-0"><i class="bi bi-grid-3x3 text-primary me-2"></i>Confusion Matrix (Test Set: 3,832)</h5>
+                            </div>
+                            <div class="card-body d-flex flex-column justify-content-center">
+                                <div class="row g-2 text-center" id="s2-cm-container">
+                                    <div class="col-6">
+                                        <div class="p-3 bg-light rounded border">
+                                            <span class="text-muted small">True Negative (Reject)</span>
+                                            <h4 class="fw-bold text-success mb-0" id="s2-cm-tn">2,560</h4>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="p-3 bg-light rounded border">
+                                            <span class="text-muted small">False Positive (False Alarm)</span>
+                                            <h4 class="fw-bold text-danger mb-0" id="s2-cm-fp">317</h4>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="p-3 bg-light rounded border">
+                                            <span class="text-muted small">False Negative (Missed Hire)</span>
+                                            <h4 class="fw-bold text-danger mb-0" id="s2-cm-fn">484</h4>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="p-3 bg-light rounded border">
+                                            <span class="text-muted small">True Positive (Shortlisted)</span>
+                                            <h4 class="fw-bold text-success mb-0" id="s2-cm-tp">471</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- SCREEN 3: SINGLE PREDICTION (Stage F)                         -->
+            <!-- ============================================================= -->
+            <div class="tab-pane fade" id="screen3" role="tabpanel">
+                <div class="mb-3">
+                    <h4 class="fw-bold mb-1"><i class="bi bi-person-badge text-primary me-2"></i>Screen 3: Single Prediction</h4>
+                    <p class="text-muted mb-0">Interactive candidate evaluation form: Enter individual credentials to generate a shortlisting recommendation, confidence score, and plain-English explanation.</p>
+                </div>
+
+                <div class="row g-4">
+                    <!-- Input Form -->
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-white py-3">
+                                <h5 class="card-title fw-bold mb-0"><i class="bi bi-pencil-square text-primary me-2"></i>Candidate Profile Form</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="single-pred-form">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-semibold">City Development Index (0.40 - 0.95)</label>
+                                            <input type="number" step="0.01" min="0.4" max="1.0" class="form-control" id="sp-cdi" value="0.92" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-semibold">Experience (Years)</label>
+                                            <select class="form-select" id="sp-experience">
+                                                <option value="<1">&lt;1 year (Entry)</option>
+                                                <option value="3">3 years</option>
+                                                <option value="5">5 years</option>
+                                                <option value="8">8 years</option>
+                                                <option value="12" selected>12 years</option>
+                                                <option value="16">16 years</option>
+                                                <option value=">20">&gt;20 years (Veteran)</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-semibold">Education Level</label>
+                                            <select class="form-select" id="sp-education">
+                                                <option value="Primary School">Primary School</option>
+                                                <option value="High School">High School</option>
+                                                <option value="Graduate">Graduate</option>
+                                                <option value="Masters" selected>Masters</option>
+                                                <option value="Phd">Phd</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-semibold">University Enrollment</label>
+                                            <select class="form-select" id="sp-enrollment">
+                                                <option value="no_enrollment" selected>no_enrollment (Degree Completed)</option>
+                                                <option value="Part time course">Part time course</option>
+                                                <option value="Full time course">Full time course</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-semibold">Training Hours Completed</label>
+                                            <input type="number" class="form-control" id="sp-training-hours" value="65" min="1" max="336">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-semibold">Company Size</label>
+                                            <select class="form-select" id="sp-company-size">
+                                                <option value="<10">&lt;10</option>
+                                                <option value="10-49">10-49</option>
+                                                <option value="50-99" selected>50-99</option>
+                                                <option value="100-499">100-499</option>
+                                                <option value="500-999">500-999</option>
+                                                <option value="1000-4999">1000-4999</option>
+                                                <option value="10000+">10000+</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-semibold">Gender</label>
+                                            <select class="form-select" id="sp-gender">
+                                                <option value="Female" selected>Female</option>
+                                                <option value="Male">Male</option>
+                                                <option value="Other">Other</option>
+                                                <option value="Unknown">Unknown</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small fw-semibold">Relevant Experience</label>
+                                            <select class="form-select" id="sp-relevent-exp">
+                                                <option value="Has relevent experience" selected>Has relevent experience</option>
+                                                <option value="No relevent experience">No relevent experience</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4">
+                                        <button type="button" class="btn btn-primary w-100" id="btn-run-single-pred">
+                                            <i class="bi bi-play-fill me-1"></i> Score Candidate & Explain
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Prediction Result & Plain English Explanation -->
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white py-3">
+                                <h5 class="card-title fw-bold mb-0"><i class="bi bi-card-checklist text-success me-2"></i>Recommendation & User-Language Explanation</h5>
+                            </div>
+                            <div class="card-body" id="sp-result-container">
+                                <div class="text-center py-5 text-muted">
+                                    <i class="bi bi-clipboard-pulse display-4 text-secondary"></i>
+                                    <p class="mt-3">Fill the candidate profile and click <b>Score Candidate & Explain</b> to view decision rules.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- SCREEN 4: BATCH SCORING                                       -->
+            <!-- ============================================================= -->
+            <div class="tab-pane fade" id="screen4" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h4 class="fw-bold mb-1"><i class="bi bi-list-check text-primary me-2"></i>Screen 4: Batch Scoring & Ranked Shortlist</h4>
+                        <p class="text-muted mb-0">Score applicant pool in bulk: Filter, sort, and inspect ranked shortlists with interactive probability thresholds, and download the resulting shortlist as CSV.</p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-success" id="s4-btn-export">
+                            <i class="bi bi-file-earmark-arrow-down me-1"></i> Download Shortlist CSV
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filter Controls Card -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <div class="row g-3 align-items-center">
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Threshold Cutoff (<span id="s4-thresh-val">0.50</span>)</label>
+                                <input type="range" class="form-range" id="s4-thresh-slider" min="0.05" max="0.95" step="0.01" value="0.50">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Filter Shortlist Status</label>
+                                <select class="form-select" id="s4-filter-select">
+                                    <option value="all" selected>All Candidates</option>
+                                    <option value="shortlisted">Shortlisted Only (>= Threshold)</option>
+                                    <option value="rejected">Not Shortlisted (< Threshold)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Top-N Quota Cutoff (Optional)</label>
+                                <input type="number" class="form-control" id="s4-topn-input" placeholder="e.g. 100">
+                            </div>
+                            <div class="col-md-3 d-flex align-items-end">
+                                <button class="btn btn-primary w-100" id="s4-btn-apply">
+                                    <i class="bi bi-funnel-fill me-1"></i> Apply Filters
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shortlist Table Card -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="card-title fw-bold mb-0">
+                            <i class="bi bi-people text-primary me-2"></i>Ranked Candidate Shortlist Pool
+                        </h5>
+                        <span class="badge bg-primary fs-6" id="s4-count-badge">Shortlisted: 0 / 19,158</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" id="shortlist-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Applicant ID</th>
+                                        <th>Match Score</th>
+                                        <th>Decision Status</th>
+                                        <th>Gender</th>
+                                        <th>Age Band</th>
+                                        <th>Institution Tier</th>
+                                        <th>Education</th>
+                                        <th>Experience</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="shortlist-tbody">
+                                    <!-- Injected via JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <span class="small text-muted" id="s4-page-info">Showing page 1</span>
+                            <div class="btn-group">
+                                <button class="btn btn-outline-secondary btn-sm" id="s4-btn-prev">Previous</button>
+                                <button class="btn btn-outline-secondary btn-sm" id="s4-btn-next">Next</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Inline Candidate Criteria Drawer -->
+                <div class="card border-primary shadow-sm mb-4 d-none" id="s4-criteria-drawer">
+                    <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
+                        <h5 class="card-title fw-bold mb-0" id="drawer-title">
+                            <i class="bi bi-search me-2"></i>Candidate Selection Criteria & Explainability Breakdown
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" id="drawer-close-btn"></button>
+                    </div>
+                    <div class="card-body" id="drawer-body">
+                        <!-- Injected via JavaScript -->
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- SCREEN 5: SETTINGS & COST MATRIX (Stage E)                     -->
+            <!-- ============================================================= -->
+            <div class="tab-pane fade" id="screen5" role="tabpanel">
+                <div class="mb-3">
+                    <h4 class="fw-bold mb-1"><i class="bi bi-sliders text-primary me-2"></i>Screen 5: Settings & Cost Matrix Optimization</h4>
+                    <p class="text-muted mb-0">Select classifier family, move decision threshold, edit financial cost matrix, and observe consequences update live.</p>
+                </div>
+
+                <div class="row g-4 mb-4">
+                    <!-- Left: Controls -->
+                    <div class="col-lg-5">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white py-3">
+                                <h5 class="card-title fw-bold mb-0"><i class="bi bi-gear-fill text-primary me-2"></i>Operating Parameters</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Active Model Classifier</label>
+                                    <select class="form-select" id="s5-model-select">
+                                        <option value="decision_tree" selected>Decision Tree (Tree-based Family)</option>
+                                        <option value="naive_bayes">Naïve Bayes (Bayesian Family)</option>
+                                        <option value="knn">k-Nearest Neighbours (Instance-based Family)</option>
+                                        <option value="logistic_regression">Logistic Regression (Linear Family)</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="form-label small fw-semibold d-flex justify-content-between">
+                                        <span>Decision Threshold (θ)</span>
+                                        <span class="badge bg-primary" id="s5-thresh-badge">0.50</span>
+                                    </label>
+                                    <input type="range" class="form-range" id="s5-thresh-slider" min="0.05" max="0.95" step="0.01" value="0.50">
+                                    <div class="d-flex justify-content-between small text-muted">
+                                        <span>0.05 (High Recall)</span>
+                                        <span>0.50 (Balanced)</span>
+                                        <span>0.95 (High Precision)</span>
+                                    </div>
+                                </div>
+
+                                <h6 class="fw-bold mb-3"><i class="bi bi-currency-dollar text-success me-1"></i>Financial Cost Matrix ($)</h6>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <label class="form-label small text-muted">Cost of False Positive ($)</label>
+                                        <input type="number" class="form-control" id="cm-cost-fp" value="500">
+                                        <span class="small text-muted" style="font-size: 0.7rem;">Wasted interviewer time</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small text-muted">Cost of False Negative ($)</label>
+                                        <input type="number" class="form-control" id="cm-cost-fn" value="3500">
+                                        <span class="small text-muted" style="font-size: 0.7rem;">Missed star talent to rival</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small text-muted">Benefit of True Positive ($)</label>
+                                        <input type="number" class="form-control" id="cm-benefit-tp" value="5000">
+                                        <span class="small text-muted" style="font-size: 0.7rem;">Value of qualified hire</span>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small text-muted">Cost of True Negative ($)</label>
+                                        <input type="number" class="form-control" id="cm-cost-tn" value="0">
+                                        <span class="small text-muted" style="font-size: 0.7rem;">Zero wasted expenditure</span>
+                                    </div>
+                                </div>
+
+                                <button class="btn btn-primary w-100" id="btn-update-cost-matrix">
+                                    <i class="bi bi-calculator me-1"></i> Recompute Expected Cost Curve
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Live Expected Cost Curve & Optimal Threshold -->
+                    <div class="col-lg-7">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                                <h5 class="card-title fw-bold mb-0">
+                                    <i class="bi bi-graph-down text-danger me-2"></i>Expected Cost vs. Decision Threshold
+                                </h5>
+                                <span class="badge bg-success fs-6" id="s5-optimal-thresh-badge">Cost-Optimal θ*: 0.38</span>
+                            </div>
+                            <div class="card-body">
+                                <div style="height: 280px;">
+                                    <canvas id="s5-cost-chart"></canvas>
+                                </div>
+                                <div class="row g-2 text-center mt-3">
+                                    <div class="col-3">
+                                        <div class="p-2 bg-light rounded border">
+                                            <span class="text-muted small">Current Threshold</span>
+                                            <h6 class="fw-bold mb-0" id="s5-stat-thresh">0.50</h6>
+                                        </div>
+                                    </div>
+                                    <div class="col-3">
+                                        <div class="p-2 bg-light rounded border">
+                                            <span class="text-muted small">Expected Net Cost</span>
+                                            <h6 class="fw-bold text-danger mb-0" id="s5-stat-cost">-$1.2M</h6>
+                                        </div>
+                                    </div>
+                                    <div class="col-3">
+                                        <div class="p-2 bg-light rounded border">
+                                            <span class="text-muted small">Shortlisted</span>
+                                            <h6 class="fw-bold text-primary mb-0" id="s5-stat-shortlisted">788</h6>
+                                        </div>
+                                    </div>
+                                    <div class="col-3">
+                                        <div class="p-2 bg-light rounded border">
+                                            <span class="text-muted small">Precision</span>
+                                            <h6 class="fw-bold text-success mb-0" id="s5-stat-prec">59.8%</h6>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================= -->
+            <!-- SCREEN 6: DOMAIN SCREEN — FAIRNESS AUDIT (PROJECT 5 CHALLENGE) -->
+            <!-- ============================================================= -->
             <div class="tab-pane fade" id="screen6" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
                         <h4 class="fw-bold mb-1 text-danger">
-                            <i class="bi bi-shield-shaded text-danger me-2"></i>Screen 6: Algorithmic Fairness Audit & Mitigation Dashboard
+                            <i class="bi bi-shield-exclamation me-2"></i>Screen 6: Applicant Shortlisting Console with Fairness Audit
                         </h4>
-                        <p class="text-muted mb-0">Group-by-group selection rate, recall & precision, 80% rule compliance, disparity drivers, and before/after feature ablation.</p>
-                    </div>
-                    <div>
-                        <span class="badge bg-danger p-2 fs-6">Domain-Specific Challenge</span>
+                        <p class="text-muted mb-0">Project 5 Technical Challenge: Compute selection rate, recall, and precision separately for each protected group; detect EEOC 80% rule violations, diagnose disparity drivers, and execute feature ablation remediation.</p>
                     </div>
                 </div>
 
                 <!-- Protected Attribute Selector Pills -->
-                <ul class="nav nav-pills mb-3 gap-2" id="fairnessAttrPills">
-                    <li class="nav-item">
-                        <button class="nav-link active" data-attr="gender"><i class="bi bi-people me-1"></i> Audit by Gender</button>
-                    </li>
-                    <li class="nav-item">
-                        <button class="nav-link" data-attr="age_band"><i class="bi bi-calendar-range me-1"></i> Audit by Age Band (Proxy)</button>
-                    </li>
-                    <li class="nav-item">
-                        <button class="nav-link" data-attr="institution"><i class="bi bi-bank me-1"></i> Audit by Institution (Proxy)</button>
-                    </li>
-                </ul>
-
-                <!-- Fairness Audit KPI Cards -->
-                <div class="row g-3 mb-4">
-                    <div class="col-md-3">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body">
-                                <span class="text-muted small text-uppercase fw-semibold">Four-Fifths (80%) Ratio</span>
-                                <h3 class="fw-bold mt-1" id="s6-min-80-ratio">--</h3>
-                                <span class="badge" id="s6-80-status-badge">Status</span>
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body py-2">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="fw-semibold small text-muted">Audited Attribute:</span>
+                                <div class="btn-group" id="fairnessAttrPills">
+                                    <button class="btn btn-outline-primary btn-sm active" data-attr="gender">
+                                        <i class="bi bi-gender-ambiguous me-1"></i> Gender
+                                    </button>
+                                    <button class="btn btn-outline-primary btn-sm" data-attr="age_band">
+                                        <i class="bi bi-hourglass-split me-1"></i> Age Band (Experience Proxy)
+                                    </button>
+                                    <button class="btn btn-outline-primary btn-sm" data-attr="institution">
+                                        <i class="bi bi-mortarboard me-1"></i> Institution Tier (Pedigree Proxy)
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body">
-                                <span class="text-muted small text-uppercase fw-semibold">Selection Rate Gap</span>
-                                <h3 class="fw-bold text-dark mt-1" id="s6-sr-gap">--</h3>
-                                <span class="text-muted small">Highest Group &minus; Lowest Group</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body">
-                                <span class="text-muted small text-uppercase fw-semibold">Recall Gap</span>
-                                <h3 class="fw-bold text-dark mt-1" id="s6-recall-gap">--</h3>
-                                <span class="text-muted small">Equal Opportunity Gap</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body">
-                                <span class="text-muted small text-uppercase fw-semibold">Precision Gap</span>
-                                <h3 class="fw-bold text-dark mt-1" id="s6-prec-gap">--</h3>
-                                <span class="text-muted small">Predictive Parity Gap</span>
-                            </div>
+                            <span class="badge bg-danger" id="s6-adverse-badge">EEOC 80% Rule Flag Active</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Group-by-Group Table -->
+                <!-- Group Fairness Table Card -->
                 <div class="card border-0 shadow-sm mb-4">
                     <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                        <span class="fw-bold"><i class="bi bi-table me-1"></i> Group-by-Group Metrics (Test Set Evaluation)</span>
-                        <span class="small text-muted"><span class="badge bg-danger me-1">&lt; 0.80</span> Highlights Four-Fifths Adverse Impact</span>
+                        <h5 class="card-title fw-bold mb-0">
+                            <i class="bi bi-people-fill text-primary me-2"></i>Demographic Audit Table (Held-Out Test Set: 3,832)
+                        </h5>
+                        <span class="small text-muted">EEOC Four-Fifths Standard: Ratio &lt; 0.80 Flagged in RED</span>
                     </div>
-                    <div class="card-body p-0">
+                    <div class="card-body">
                         <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0" id="s6-group-table">
+                            <table class="table table-bordered table-hover align-middle mb-0">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>Protected Group</th>
-                                        <th>Test Rows</th>
-                                        <th>Selected (Shortlisted)</th>
-                                        <th>Selection Rate</th>
-                                        <th>Recall (TPR)</th>
-                                        <th>Precision</th>
-                                        <th>80% Rule Ratio</th>
-                                        <th>Compliance Status</th>
+                                        <th>Protected Subgroup</th>
+                                        <th>Group Count (N)</th>
+                                        <th>Shortlisted Count</th>
+                                        <th>Selection Rate (Demographic Parity)</th>
+                                        <th>EEOC 4/5ths Impact Ratio</th>
+                                        <th>Group Recall (Equal Opportunity)</th>
+                                        <th>Group Precision (Predictive Parity)</th>
+                                        <th>Reliability Check</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <!-- Populated dynamically -->
+                                <tbody id="s6-audit-tbody">
+                                    <!-- Injected via JavaScript -->
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
 
-                <!-- Disparity Driver Panel -->
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-header bg-white py-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="fw-bold mb-0 text-dark"><i class="bi bi-binoculars me-1 text-primary"></i> Disparity Driver Panel: What Attribute Drives the Gap?</h6>
-                                <span class="small text-muted">Formula: &beta;<sub>j</sub> &times; (Mean<sub>Favoured</sub> &minus; Mean<sub>Disadvantaged</sub>)</span>
+                <!-- Disparity Driver Diagnostics -->
+                <div class="row g-4 mb-4">
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white py-3">
+                                <h5 class="card-title fw-bold mb-0">
+                                    <i class="bi bi-crosshair text-danger me-2"></i>Disparity Driver Identification (β × Δx̄)
+                                </h5>
                             </div>
-                            <span class="badge bg-light text-dark border" id="s6-fav-dis-badge">Favoured vs Disadvantaged</span>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="row g-3">
-                            <div class="col-md-7">
-                                <canvas id="chart-drivers" height="230"></canvas>
-                            </div>
-                            <div class="col-md-5">
-                                <div class="table-responsive">
-                                    <table class="table table-sm table-bordered small align-middle mb-0" id="s6-driver-table">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>Feature</th>
-                                                <th>Weight &beta;</th>
-                                                <th>Diff</th>
-                                                <th>Impact Score</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <!-- Populated dynamically -->
-                                        </tbody>
-                                    </table>
+                            <div class="card-body">
+                                <p class="small text-muted mb-2">
+                                    Mathematically reveals which specific credential drives the demographic acceptance gap between the favored and disadvantaged groups:
+                                </p>
+                                <div style="height: 280px;">
+                                    <canvas id="s6-drivers-chart"></canvas>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Before vs After Feature Ablation Sandbox -->
-                <div class="card border-0 shadow-sm border-start border-4 border-primary">
-                    <div class="card-header bg-white py-3">
-                        <h6 class="fw-bold mb-0 text-primary">
-                            <i class="bi bi-arrow-left-right me-1"></i> Interactive Before-and-After Feature Ablation Sandbox
-                        </h6>
-                        <span class="small text-muted">Remove an attribute from model training to see what happens to both the fairness gap and accuracy.</span>
-                    </div>
-                    <div class="card-body">
-                        <div class="row g-3 align-items-end mb-3">
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">Select Attribute to Drop</label>
-                                <select class="form-select" id="s6-ablate-select">
-                                    <option value="gender">gender (Direct Protected Attribute)</option>
-                                    <option value="relevent_experience">relevent_experience</option>
-                                    <option value="enrolled_university">enrolled_university</option>
-                                    <option value="education_level">education_level</option>
-                                    <option value="company_size">company_size</option>
-                                    <option value="company_type">company_type</option>
-                                    <option value="city_development_index">city_development_index</option>
-                                    <option value="training_hours">training_hours</option>
-                                    <option value="last_new_job">last_new_job</option>
-                                </select>
+                    <!-- Feature Ablation Remediation Card -->
+                    <div class="col-lg-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white py-3">
+                                <h5 class="card-title fw-bold mb-0">
+                                    <i class="bi bi-tools text-success me-2"></i>Remediation via Feature Ablation
+                                </h5>
                             </div>
-                            <div class="col-md-4">
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="checkbox" id="s6-drop-proxies-check">
-                                    <label class="form-check-label fw-semibold" for="s6-drop-proxies-check">
-                                        Also drop top 3 proxy features
+                            <div class="card-body">
+                                <p class="small text-muted mb-3">
+                                    Drop the identified driver feature, retrain the classifier on the same fixed split, and evaluate the <b>Fairness vs. Accuracy tradeoff</b>:
+                                </p>
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold">Feature to Ablate / Drop</label>
+                                    <select class="form-select" id="ablate-feature-select">
+                                        <option value="city_development_index">city_development_index (Primary Economic Driver)</option>
+                                        <option value="education_level">education_level (Degree Pedigree)</option>
+                                        <option value="enrolled_university">enrolled_university</option>
+                                        <option value="gender">gender (Direct Demographic)</option>
+                                        <option value="company_size">company_size</option>
+                                    </select>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="ablate-drop-proxies" checked>
+                                    <label class="form-check-label small" for="ablate-drop-proxies">
+                                        Also ablate top-3 correlated proxy features
                                     </label>
                                 </div>
-                                <span class="small text-muted d-block">Automatically removes top correlated proxy predictors.</span>
-                            </div>
-                            <div class="col-md-4">
-                                <button class="btn btn-danger w-100" id="s6-btn-run-ablation">
-                                    <i class="bi bi-lightning-charge me-1"></i> Run Ablation Simulation
+                                <button class="btn btn-danger w-100 mb-3" id="btn-run-ablation">
+                                    <i class="bi bi-scissors me-1"></i> Retrain Model without Driver (Execute Ablation)
                                 </button>
-                            </div>
-                        </div>
 
-                        <!-- Before vs After Results Table -->
-                        <div class="table-responsive mb-3">
-                            <table class="table table-bordered align-middle text-center mb-0" id="s6-ablation-table">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Fairness & Performance Metric</th>
-                                        <th>Baseline (Before)</th>
-                                        <th>Ablated (After)</th>
-                                        <th>Delta (&Delta;)</th>
-                                        <th>Interpretation</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td class="text-start fw-bold">Four-Fifths (80%) Ratio</td>
-                                        <td id="abl-before-ratio">--</td>
-                                        <td id="abl-after-ratio">--</td>
-                                        <td id="abl-delta-ratio">--</td>
-                                        <td id="abl-interp-ratio" class="small text-muted">--</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-start fw-bold">Selection-Rate Gap</td>
-                                        <td id="abl-before-srgap">--</td>
-                                        <td id="abl-after-srgap">--</td>
-                                        <td id="abl-delta-srgap">--</td>
-                                        <td id="abl-interp-srgap" class="small text-muted">--</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-start fw-bold">Recall Gap (Equal Opp.)</td>
-                                        <td id="abl-before-recallgap">--</td>
-                                        <td id="abl-after-recallgap">--</td>
-                                        <td id="abl-delta-recallgap">--</td>
-                                        <td id="abl-interp-recallgap" class="small text-muted">--</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-start fw-bold">Model Accuracy</td>
-                                        <td id="abl-before-acc">--</td>
-                                        <td id="abl-after-acc">--</td>
-                                        <td id="abl-delta-acc">--</td>
-                                        <td id="abl-interp-acc" class="small text-muted">--</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-start fw-bold">Model ROC-AUC</td>
-                                        <td id="abl-before-auc">--</td>
-                                        <td id="abl-after-auc">--</td>
-                                        <td id="abl-delta-auc">--</td>
-                                        <td id="abl-interp-auc" class="small text-muted">--</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- Mandatory Recruiter Guidance Note -->
-                        <div class="alert alert-info d-flex align-items-center mb-0" role="alert">
-                            <i class="bi bi-info-circle-fill me-2 fs-5"></i>
-                            <div>
-                                <strong>Recruiter Diagnostic Note:</strong>
-                                <span id="s6-ablation-note">If the gap barely changed, other features are acting as proxies for the dropped attribute.</span>
+                                <div id="ablation-results-container">
+                                    <!-- Injected via JavaScript -->
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
+
             </div>
 
         </div>
@@ -1088,29 +864,25 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title fw-bold">Upload Applicant Pool CSV</h5>
+                    <h5 class="modal-title fw-bold">Upload Custom Applicant Pool CSV</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="small text-muted">Upload a recruitment CSV file matching the Kaggle HR schema (or containing candidate features and target column).</p>
-                    <div class="mb-3">
-                        <input class="form-control" type="file" id="csvFileInput" accept=".csv">
-                    </div>
-                    <div id="uploadStatus"></div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="btnUploadSubmit">Upload & Process</button>
+                    <form id="upload-csv-form" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Select CSV File</label>
+                            <input type="file" class="form-control" name="file" accept=".csv" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Upload & Re-Audit</button>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Bootstrap 5 Bundle JS -->
+    <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <!-- Custom Application JS -->
+    <!-- Custom Frontend Application Script -->
     <script src="/static/js/app.js"></script>
 </body>
 </html>
