@@ -1,282 +1,296 @@
-"""
-Fairness Audit Module for Applicant Shortlisting Console.
-Computes selection rate, recall, and precision separately for each protected group,
-evaluates the Four-Fifths (80%) Rule, identifies disparity driving attributes,
-and conducts before-and-after feature ablation studies.
-"""
+"""Group rates, support-aware uncertainty, diagnostics, and isolated ablation."""
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 
+import numpy as np
 
-def audit_single_attribute(test_rows, test_probs, threshold, attribute_name):
-    """
-    Computes group-by-group metrics for a specified protected attribute.
-    Metrics per group: group size, selection rate, recall, precision, and 80% rule ratio.
-    """
-    # Group rows by attribute value
-    groups = defaultdict(list)
-    for idx, (row, prob) in enumerate(zip(test_rows, test_probs)):
-        val = row.get(attribute_name, 'Unknown')
-        groups[val].append((row, prob))
-
-    group_metrics = []
-    selection_rates = {}
-    recalls = {}
-    precisions = {}
-
-    for val, items in groups.items():
-        n_group = len(items)
-        is_small = n_group < 30  # Warning threshold
-
-        y_true = [item[0]['target'] for item in items]
-        y_prob = [item[1] for item in items]
-        y_pred = [1 if p >= threshold else 0 for p in y_prob]
-
-        # Selected count
-        n_selected = sum(y_pred)
-        selection_rate = n_selected / n_group if n_group > 0 else 0.0
-
-        # Recall (True Positive Rate) = TP / Actual Positives
-        actual_positives = sum(y_true)
-        true_positives = sum(1 for yt, yp in zip(y_true, y_pred) if yt == 1 and yp == 1)
-        recall = true_positives / actual_positives if actual_positives > 0 else 0.0
-
-        # Precision = TP / Predicted Positives
-        precision = true_positives / n_selected if n_selected > 0 else 0.0
-
-        selection_rates[val] = selection_rate
-        recalls[val] = recall
-        precisions[val] = precision
-
-        group_metrics.append({
-            'group': val,
-            'size': n_group,
-            'is_small_group': is_small,
-            'selected_count': n_selected,
-            'actual_positive_count': actual_positives,
-            'selection_rate': round(selection_rate, 4),
-            'recall': round(recall, 4),
-            'precision': round(precision, 4)
-        })
-
-    # Sort groups by size descending
-    group_metrics.sort(key=lambda x: x['size'], reverse=True)
-
-    # Determine highest selection rate for 80% rule
-    max_sr = max(selection_rates.values()) if selection_rates else 0.0
-    favoured_group = max(selection_rates, key=selection_rates.get) if selection_rates else 'None'
-    disadvantaged_group = min(selection_rates, key=selection_rates.get) if selection_rates else 'None'
-
-    min_ratio = 1.0
-    for gm in group_metrics:
-        ratio = (gm['selection_rate'] / max_sr) if max_sr > 0 else 1.0
-        gm['four_fifths_ratio'] = round(ratio, 4)
-        gm['violates_80_rule'] = ratio < 0.8
-        if ratio < min_ratio:
-            min_ratio = ratio
-
-    # Gaps: max minus min
-    sr_values = list(selection_rates.values())
-    recall_values = list(recalls.values())
-    precision_values = list(precisions.values())
-
-    sr_gap = (max(sr_values) - min(sr_values)) if sr_values else 0.0
-    recall_gap = (max(recall_values) - min(recall_values)) if recall_values else 0.0
-    precision_gap = (max(precision_values) - min(precision_values)) if precision_values else 0.0
-
-    return {
-        'attribute': attribute_name,
-        'groups': group_metrics,
-        'favoured_group': favoured_group,
-        'disadvantaged_group': disadvantaged_group,
-        'max_selection_rate': round(max_sr, 4),
-        'min_four_fifths_ratio': round(min_ratio, 4),
-        'selection_rate_gap': round(sr_gap, 4),
-        'recall_gap': round(recall_gap, 4),
-        'precision_gap': round(precision_gap, 4),
-        'adverse_impact_detected': min_ratio < 0.8
-    }
+from backend.data_manager import AUDIT_LABELS, NUMERIC_COLUMNS
+from backend.ml_engine import ModelEngine
+from backend.policy import SelectionPolicy
 
 
-def compute_fairness_audit(data_manager, ml_engine, threshold=0.5):
-    """
-    Runs full fairness audit across all three protected attributes:
-    Gender, Age Band, and Institution.
-    """
-    test_rows = [data_manager.processed_data[i] for i in data_manager.test_indices]
-    test_probs = ml_engine.cached_test_probs
-
-    audit_gender = audit_single_attribute(test_rows, test_probs, threshold, 'gender')
-    audit_age = audit_single_attribute(test_rows, test_probs, threshold, 'age_band')
-    audit_inst = audit_single_attribute(test_rows, test_probs, threshold, 'institution')
-
-    return {
-        'gender': audit_gender,
-        'age_band': audit_age,
-        'institution': audit_inst,
-        'threshold': threshold
-    }
+def wilson(successes, total):
+    if not total:
+        return None
+    z = 1.959963984540054
+    p = successes / total
+    d = 1 + z * z / total
+    mid = (p + z * z / (2 * total)) / d
+    half = z * np.sqrt(p * (1 - p) / total + z * z / (4 * total * total)) / d
+    return [max(0, float(mid - half)), min(1, float(mid + half))]
 
 
-def compute_disparity_drivers(data_manager, ml_engine, protected_attribute='gender', top_k=10):
-    """
-    For Logistic Regression:
-    For each feature, computes:
-    driver_score = coefficient * (mean_in_favoured_group - mean_in_disadvantaged_group)
-    Identifies attributes that drive the selection rate gap.
-    """
-    test_rows = [data_manager.processed_data[i] for i in data_manager.test_indices]
-    test_probs = ml_engine.cached_test_probs
-    threshold = ml_engine.threshold
-
-    single_audit = audit_single_attribute(test_rows, test_probs, threshold, protected_attribute)
-    fav_group = single_audit['favoured_group']
-    dis_group = single_audit['disadvantaged_group']
-
-    fav_indices = [i for i, r in enumerate(test_rows) if r.get(protected_attribute) == fav_group]
-    dis_indices = [i for i, r in enumerate(test_rows) if r.get(protected_attribute) == dis_group]
-
-    if not fav_indices or not dis_indices:
-        return {'drivers': [], 'favoured_group': fav_group, 'disadvantaged_group': dis_group}
-
-    active_features = ml_engine.active_features
-    X_test = data_manager.get_feature_matrix(test_rows, active_features)
-
-    # Feature weights
-    if hasattr(ml_engine.model, 'coef_') and ml_engine.model.coef_ is not None:
-        try:
-            weights = [float(x) for x in ml_engine.model.coef_[0]] if hasattr(ml_engine.model.coef_[0], '__iter__') else [float(x) for x in ml_engine.model.coef_]
-        except Exception:
-            weights = [float(x) for x in ml_engine.model.coef_]
-    elif hasattr(ml_engine.model, 'feature_importances_') and ml_engine.model.feature_importances_ is not None:
-        weights = [float(x) for x in ml_engine.model.feature_importances_]
-    else:
-        weights = [1.0] * len(active_features)
-
-    driver_results = []
-    for j, feat in enumerate(active_features):
-        mean_fav = float(sum(X_test[i][j] for i in fav_indices) / len(fav_indices))
-        mean_dis = float(sum(X_test[i][j] for i in dis_indices) / len(dis_indices))
-        diff = float(mean_fav - mean_dis)
-        w = float(weights[j]) if j < len(weights) else 0.0
-        score = float(w * diff)
-
-        orig_col = data_manager.column_origin_map.get(feat, feat)
-
-        driver_results.append({
-            'feature': feat,
-            'original_column': orig_col,
-            'coefficient': round(w, 4),
-            'favoured_mean': round(mean_fav, 4),
-            'disadvantaged_mean': round(mean_dis, 4),
-            'diff': round(diff, 4),
-            'driver_score': round(score, 5),
-            'disparity_impact': round(score, 5),
-            'abs_impact': round(abs(score), 5),
-            'favours': 'Favoured Group' if score > 0 else 'Disadvantaged Group'
-        })
-
-    # Sort by absolute impact descending
-    driver_results.sort(key=lambda x: x['abs_impact'], reverse=True)
-
-    return {
-        'protected_attribute': protected_attribute,
-        'favoured_group': fav_group,
-        'disadvantaged_group': dis_group,
-        'drivers': driver_results[:top_k]
-    }
+def gap(values):
+    available = [x for x in values if x is not None]
+    return max(available) - min(available) if len(available) > 1 else None
 
 
-def compute_before_after_ablation(data_manager, ml_engine, attribute_to_drop, drop_proxies=False, protected_attribute='gender'):
-    """
-    Conducts Before vs After feature ablation:
-    1. Records Baseline (Before) metrics: 80% ratio, selection rate gap, recall gap, accuracy, AUC.
-    2. Retrains model with the chosen attribute removed from input features (and optionally top 3 proxies).
-    3. Re-evaluates on test set and computes After metrics and deltas.
-    4. Restores original model state.
-    """
-    # 1. Baseline state
-    before_metrics = dict(ml_engine.latest_metrics)
-    before_audit = audit_single_attribute(
-        [data_manager.processed_data[i] for i in data_manager.test_indices],
-        ml_engine.cached_test_probs,
-        ml_engine.threshold,
-        protected_attribute
+def bootstrap_gap(groups, success_key, total_key):
+    valid = [g for g in groups if g[total_key] > 0]
+    if len(valid) < 2:
+        return None
+    rng = np.random.default_rng(42)
+    samples = np.asarray(
+        [
+            rng.binomial(g[total_key], g[success_key] / g[total_key], 1000)
+            / g[total_key]
+            for g in valid
+        ]
     )
+    return np.quantile(
+        samples.max(axis=0) - samples.min(axis=0), [0.025, 0.975]
+    ).tolist()
 
-    before_state = {
-        'four_fifths_ratio': before_audit['min_four_fifths_ratio'],
-        'selection_rate_gap': before_audit['selection_rate_gap'],
-        'recall_gap': before_audit['recall_gap'],
-        'precision_gap': before_audit['precision_gap'],
-        'accuracy': before_metrics.get('accuracy', 0.0),
-        'auc': before_metrics.get('auc', 0.0),
-        'active_features_count': len(ml_engine.active_features)
-    }
 
-    # 2. Retrain with ablation
-    saved_model = ml_engine.model
-    saved_probs = ml_engine.cached_test_probs
-    saved_active = ml_engine.active_features
-    saved_metrics = ml_engine.latest_metrics
-
-    # Train ablated model
-    ml_engine.train(
-        model_type=ml_engine.model_type,
-        threshold=ml_engine.threshold,
-        attribute_to_drop=attribute_to_drop,
-        drop_proxies=drop_proxies
-    )
-
-    after_metrics = dict(ml_engine.latest_metrics)
-    after_audit = audit_single_attribute(
-        [data_manager.processed_data[i] for i in data_manager.test_indices],
-        ml_engine.cached_test_probs,
-        ml_engine.threshold,
-        protected_attribute
-    )
-
-    after_state = {
-        'four_fifths_ratio': after_audit['min_four_fifths_ratio'],
-        'selection_rate_gap': after_audit['selection_rate_gap'],
-        'recall_gap': after_audit['recall_gap'],
-        'precision_gap': after_audit['precision_gap'],
-        'accuracy': after_metrics.get('accuracy', 0.0),
-        'auc': after_metrics.get('auc', 0.0),
-        'active_features_count': len(ml_engine.active_features),
-        'dropped_features': [f for f in saved_active if f not in ml_engine.active_features]
-    }
-
-    # Compute deltas (After - Before)
-    deltas = {
-        'four_fifths_ratio': round(after_state['four_fifths_ratio'] - before_state['four_fifths_ratio'], 4),
-        'selection_rate_gap': round(after_state['selection_rate_gap'] - before_state['selection_rate_gap'], 4),
-        'recall_gap': round(after_state['recall_gap'] - before_state['recall_gap'], 4),
-        'precision_gap': round(after_state['precision_gap'] - before_state['precision_gap'], 4),
-        'accuracy': round(after_state['accuracy'] - before_state['accuracy'], 4),
-        'auc': round(after_state['auc'] - before_state['auc'], 4)
-    }
-
-    # Restore original state so main model remains unaffected unless user commits
-    ml_engine.model = saved_model
-    ml_engine.cached_test_probs = saved_probs
-    ml_engine.active_features = saved_active
-    ml_engine.latest_metrics = saved_metrics
-
-    return {
-        'dropped_attribute': attribute_to_drop,
-        'drop_proxies': drop_proxies,
-        'protected_attribute_audited': protected_attribute,
-        'before': before_state,
-        'after': after_state,
-        'delta': deltas,
-        'gap_before': before_state['selection_rate_gap'],
-        'gap_after': after_state['selection_rate_gap'],
-        'gap_delta': deltas['selection_rate_gap'],
-        'auc_before': before_state['auc'],
-        'auc_after': after_state['auc'],
-        'auc_delta': deltas['auc'],
-        'explanation_note': (
-            "If the gap barely changed, other features are acting as proxies for the dropped attribute."
+def audit_single_attribute(
+    test_rows, test_probs, threshold=0.5, attribute_name="gender", decisions=None
+):
+    if len(test_rows) != len(test_probs):
+        raise ValueError("Audit rows and scores must align.")
+    if decisions is None:
+        decisions = SelectionPolicy(threshold).select(test_rows, test_probs)[0]
+    if len(decisions) != len(test_rows):
+        raise ValueError("Audit decisions must align with rows.")
+    grouped = defaultdict(list)
+    for row, selected in zip(test_rows, decisions):
+        grouped[str(row.get(attribute_name) or "Unknown")].append((row, int(selected)))
+    groups = []
+    for label, items in grouped.items():
+        n = len(items)
+        selected = sum(p for _, p in items)
+        labeled = [(r, p) for r, p in items if r.get("target") is not None]
+        positives = sum(r["target"] == 1 for r, p in labeled)
+        selected_labeled = sum(p for r, p in labeled)
+        tp = sum(r["target"] == 1 and p == 1 for r, p in labeled)
+        negatives = len(labeled) - positives
+        fp = sum(r["target"] == 0 and p == 1 for r, p in labeled)
+        recall = tp / positives if positives else None
+        precision = tp / selected_labeled if selected_labeled else None
+        warnings = []
+        if n < 30:
+            warnings.append("Fewer than 30 records")
+        if len(labeled) < n:
+            warnings.append(
+                "Outcomes missing; label metrics use observed outcomes only"
+            )
+        if positives < 20:
+            warnings.append("Recall has fewer than 20 positive outcomes")
+        if selected_labeled < 20:
+            warnings.append("Precision has fewer than 20 labeled selections")
+        groups.append(
+            {
+                "group": label,
+                "size": n,
+                "selected_count": selected,
+                "labeled_count": len(labeled),
+                "label_coverage": len(labeled) / n,
+                "actual_positive_count": positives,
+                "selected_labeled_count": selected_labeled,
+                "true_positives": tp,
+                "selection_rate": selected / n,
+                "selection_rate_ci": wilson(selected, n),
+                "recall": recall,
+                "recall_ci": wilson(tp, positives),
+                "precision": precision,
+                "precision_ci": wilson(tp, selected_labeled),
+                "false_positive_rate": fp / negatives if negatives else None,
+                "warnings": warnings,
+                "is_small_group": bool(warnings),
+            }
         )
+    groups.sort(key=lambda g: (-g["size"], g["group"]))
+    rates = [g["selection_rate"] for g in groups]
+    highest = max(rates) if rates else 0
+    for g in groups:
+        g["four_fifths_ratio"] = g["selection_rate"] / highest if highest else None
+        g["violates_80_rule"] = g["four_fifths_ratio"] < 0.8 if highest else None
+    ratios = [
+        g["four_fifths_ratio"] for g in groups if g["four_fifths_ratio"] is not None
+    ]
+    return {
+        "attribute": attribute_name,
+        "label": AUDIT_LABELS.get(attribute_name, attribute_name.replace("__", " × ")),
+        "groups": groups,
+        "selection_rate_gap": gap(rates),
+        "recall_gap": gap([g["recall"] for g in groups]),
+        "precision_gap": gap([g["precision"] for g in groups]),
+        "selection_rate_gap_ci": bootstrap_gap(groups, "selected_count", "size"),
+        "recall_gap_ci": bootstrap_gap(
+            groups, "true_positives", "actual_positive_count"
+        ),
+        "precision_gap_ci": bootstrap_gap(
+            groups, "true_positives", "selected_labeled_count"
+        ),
+        "favoured_group": max(groups, key=lambda g: g["selection_rate"])["group"]
+        if highest
+        else None,
+        "disadvantaged_group": min(groups, key=lambda g: g["selection_rate"])["group"]
+        if highest
+        else None,
+        "min_four_fifths_ratio": min(ratios) if ratios else None,
+        "adverse_impact_detected": any(x < 0.8 for x in ratios) if ratios else None,
+        "status": "no_selections"
+        if not highest
+        else "review"
+        if any(x < 0.8 for x in ratios)
+        else "no_flag",
+        "unknown_count": sum(g["size"] for g in groups if g["group"] == "Unknown"),
+        "notes": [
+            "Gaps compare max and min estimable group rates, including Unknown.",
+            "95% Wilson intervals for rates; plug-in binomial bootstrap intervals for gaps (1,000 draws, seed 42). These are exploratory uncertainty estimates.",
+            "A four-fifths flag is a screening heuristic, not a fairness certificate or legal conclusion.",
+        ],
     }
+
+
+def compute_fairness_audit(
+    data_manager, ml_engine, threshold=0.5, *, rows=None, policy=None, attributes=None
+):
+    rows = rows if rows is not None else data_manager.rows_for("test")
+    policy = policy or SelectionPolicy(threshold)
+    scores = ml_engine.predict_rows(rows)
+    decisions, _ = policy.select(rows, scores)
+    return {
+        a: audit_single_attribute(rows, scores, policy.threshold, a, decisions)
+        for a in (attributes or data_manager.audit_attributes)
+    }
+
+
+def compute_disparity_drivers(
+    data_manager,
+    ml_engine,
+    protected_attribute="gender",
+    top_k=10,
+    *,
+    rows=None,
+    policy=None,
+):
+    rows = rows if rows is not None else data_manager.rows_for("validation")
+    policy = policy or SelectionPolicy(ml_engine.threshold)
+    scores = ml_engine.predict_rows(rows)
+    selected, _ = policy.select(rows, scores)
+    audit = audit_single_attribute(
+        rows, scores, policy.threshold, protected_attribute, selected
+    )
+    favored, other = audit["favoured_group"], audit["disadvantaged_group"]
+    if not favored or favored == other:
+        return {
+            "drivers": [],
+            "note": "No distinct selection-rate groups to investigate.",
+        }
+    # Deterministic bounded sample makes nonlinear diagnostics tractable for KNN.
+    a = [r for r in rows if r.get(protected_attribute, "Unknown") == favored][:150]
+    b = [r for r in rows if r.get(protected_attribute, "Unknown") == other][:150]
+    sample = a + b
+    base = ml_engine.predict_rows(sample)
+    base_gap = float(np.mean(base[: len(a)]) - np.mean(base[len(a) :]))
+    training = data_manager.rows_for("train")
+    result = []
+    for col in ml_engine.active_columns:
+        values = [r[col] for r in training if r.get(col) is not None]
+        reference = (
+            (float(np.median(values)) if values else 0.0)
+            if col in NUMERIC_COLUMNS
+            else Counter(values).most_common(1)[0][0]
+        )
+        perturbed = [dict(r, **{col: reference}) for r in sample]
+        probs = ml_engine.predict_rows(perturbed)
+        after = float(np.mean(probs[: len(a)]) - np.mean(probs[len(a) :]))
+        result.append(
+            {
+                "original_column": col,
+                "feature": col,
+                "driver_score": base_gap - after,
+                "abs_impact": abs(base_gap - after),
+                "reference_value": reference,
+                "score_gap_after_replacement": after,
+            }
+        )
+    return {
+        "drivers": sorted(result, key=lambda x: -x["abs_impact"])[:top_k],
+        "favoured_group": favored,
+        "disadvantaged_group": other,
+        "sample_size": len(sample),
+        "baseline_mean_score_gap": base_gap,
+        "method": "Difference in group mean scores after replacing one whole source attribute with its training median/mode. Model-aware diagnostic, not causal attribution or a selection-gap decomposition.",
+    }
+
+
+def compute_before_after_ablation(
+    data_manager,
+    ml_engine,
+    attribute_to_drop,
+    drop_proxies=False,
+    protected_attribute="gender",
+    *,
+    rows=None,
+    policy=None,
+    attributes=None,
+):
+    if attribute_to_drop not in ml_engine.active_columns:
+        raise ValueError(
+            "Choose an active input; audit-only or already removed attributes cannot be ablated."
+        )
+    rows = rows if rows is not None else data_manager.rows_for("validation")
+    policy = policy or SelectionPolicy(ml_engine.threshold)
+    attrs = attributes or data_manager.audit_attributes
+    if protected_attribute not in attrs:
+        raise ValueError("Unknown audit grouping.")
+    proxies = ml_engine.proxy_candidates(attribute_to_drop) if drop_proxies else []
+    dropped = sorted(
+        set(
+            ml_engine.dropped_columns
+            + [attribute_to_drop]
+            + [p["column"] for p in proxies]
+        )
+    )
+    candidate = ModelEngine(data_manager)
+    candidate.train(ml_engine.model_type, policy.threshold, dropped_columns=dropped)
+
+    def state(engine):
+        audits = compute_fairness_audit(
+            data_manager, engine, rows=rows, policy=policy, attributes=attrs
+        )
+        metrics = engine.evaluate(rows, policy)
+        validation = engine.evaluate(data_manager.rows_for("validation"), policy)
+        return {
+            "audit": audits,
+            "metrics": metrics,
+            "validation_performance": validation,
+            **{
+                k: audits[protected_attribute][k]
+                for k in [
+                    "selection_rate_gap",
+                    "recall_gap",
+                    "precision_gap",
+                    "min_four_fifths_ratio",
+                ]
+            },
+            "accuracy": metrics["accuracy"],
+            "auc": metrics["auc"],
+            "active_features_count": len(engine.active_features),
+        }
+
+    before, after = state(ml_engine), state(candidate)
+    keys = ["selection_rate_gap", "recall_gap", "precision_gap", "accuracy", "auc"]
+    delta = {
+        k: after[k] - before[k]
+        if after[k] is not None and before[k] is not None
+        else None
+        for k in keys
+    }
+    result = {
+        "dropped_attribute": attribute_to_drop,
+        "dropped_columns": dropped,
+        "additional_proxies": proxies,
+        "protected_attribute_audited": protected_attribute,
+        "before": before,
+        "after": after,
+        "delta": delta,
+        "policy": policy.to_dict(),
+        "baseline_model_version": ml_engine.version,
+        "candidate_model_version": candidate.version,
+        "evaluation_note": "Exploratory comparison. Validation rows support intervention choice; repeated exploration of test outcomes is not independent final evaluation.",
+        "split_id": data_manager.dataset_id + ":seed42:60-20-20",
+    }
+    return result, candidate

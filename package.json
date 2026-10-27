@@ -1,0 +1,29 @@
+{
+  "name": "applicant-shortlisting-console-fairness-audit",
+  "version": "1.0.0",
+  "description": "Local classification and fairness-audit workbench. Node dependencies are development-only.",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "node --test tests/frontend.test.cjs",
+    "format": "prettier --write static/js/app.js static/css/style.css templates/index.html",
+    "format:check": "prettier --check static/js/app.js static/css/style.css templates/index.html"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/huzaifaakhtar997-bit/applicant-shortlisting-console-fairness-audit.git"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/huzaifaakhtar997-bit/applicant-shortlisting-console-fairness-audit/issues"
+  },
+  "homepage": "https://github.com/huzaifaakhtar997-bit/applicant-shortlisting-console-fairness-audit#readme",
+  "devDependencies": {
+    "axe-core": "4.14.0",
+    "jsdom": "27.4.0",
+    "prettier": "3.9.10"
+  },
+  "private": true
+}

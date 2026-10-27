@@ -1,4 +1,11 @@
 __pycache__/
+.venv/
+.local/
+node_modules/
+test-results.txt
+test-results.json
+coverage/
+tmp/
 *.py[cod]
 *$py.class
 *.log

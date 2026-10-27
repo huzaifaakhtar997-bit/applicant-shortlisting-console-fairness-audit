@@ -1,719 +1,445 @@
-"""
-Data Manager Module for Applicant Shortlisting Console.
-Handles dataset loading, protected attribute derivation (proxies),
-data quality audit (6 fault categories), provenance tracking,
-validation rules (10 assertions), missing value imputation,
-one-hot encoding, stratified train/test splitting, and proxy correlation detection.
-"""
+"""Deterministic CSV validation. Learned transformations belong in fitted ML pipelines."""
 
-import os
 import csv
+import hashlib
+import io
+import json
 import math
-import random
 from collections import Counter
+from pathlib import Path
 
-# Try importing pandas and numpy if available
-try:
-    import numpy as np
-    import pandas as pd
-    _test = np.array([1.0, 2.0])
-    HAS_PANDAS = True
-except Exception:
-    HAS_PANDAS = False
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
 
-
-# ==============================================================================
-# STAGE A: DATA DICTIONARY & EXCLUDED ATTRIBUTES STATEMENT
-# ==============================================================================
-
-DATA_DICTIONARY = [
-    {
-        'column': 'enrollee_id',
-        'type': 'Nominal (Discrete ID)',
-        'plausible_range': '1 to 35,000',
-        'role': 'Identifier (MUST NOT BE USED)',
-        'description': 'Unique database transaction identifier. Carries zero generalisable signal and causes identity leakage/memorization.'
-    },
-    {
-        'column': 'city',
-        'type': 'Nominal',
-        'plausible_range': 'city_1 to city_180',
-        'role': 'Explanatory Attribute',
-        'description': 'Anonymized geographic code of candidate location.'
-    },
-    {
-        'column': 'city_development_index',
-        'type': 'Interval',
-        'plausible_range': '0.400 to 0.950',
-        'role': 'Explanatory Attribute',
-        'description': 'Scaled development and economic prosperity index of the candidate city.'
-    },
-    {
-        'column': 'gender',
-        'type': 'Nominal',
-        'plausible_range': 'Male, Female, Other, Unknown',
-        'role': 'Protected Attribute 1 (Direct Demographic)',
-        'description': 'Self-reported gender. Missing values imputed as Unknown.'
-    },
-    {
-        'column': 'relevent_experience',
-        'type': 'Nominal (Binary)',
-        'plausible_range': 'Has relevent experience, No relevent experience',
-        'role': 'Explanatory Attribute',
-        'description': 'Whether applicant has prior relevant experience in data science/analytics.'
-    },
-    {
-        'column': 'enrolled_university',
-        'type': 'Nominal',
-        'plausible_range': 'no_enrollment, Full time course, Part time course, Unknown',
-        'role': 'Explanatory Attribute & Proxy Component',
-        'description': 'Type of university enrollment if currently pursuing higher studies.'
-    },
-    {
-        'column': 'education_level',
-        'type': 'Ordinal',
-        'plausible_range': 'Primary School < High School < Graduate < Masters < Phd, Unknown',
-        'role': 'Explanatory Attribute & Proxy Component',
-        'description': 'Highest educational qualification attained.'
-    },
-    {
-        'column': 'major_discipline',
-        'type': 'Nominal',
-        'plausible_range': 'STEM, Business Degree, Arts, Humanities, No Major, Other, Unknown',
-        'role': 'Explanatory Attribute',
-        'description': 'Primary academic discipline of degree.'
-    },
-    {
-        'column': 'experience',
-        'type': 'Ordinal',
-        'plausible_range': '<1, 1, 2, ..., 20, >20, Unknown',
-        'role': 'Explanatory Attribute & Age Proxy',
-        'description': 'Total years of professional experience.'
-    },
-    {
-        'column': 'company_size',
-        'type': 'Ordinal',
-        'plausible_range': '<10, 10-49, 50-99, 100-499, 500-999, 1000-4999, 5000-9999, 10000+, Unknown',
-        'role': 'Explanatory Attribute',
-        'description': 'Number of employees in current employer organization.'
-    },
-    {
-        'column': 'company_type',
-        'type': 'Nominal',
-        'plausible_range': 'Pvt Ltd, Funded Startup, Public Sector, Early Stage Startup, NGO, Other, Unknown',
-        'role': 'Explanatory Attribute',
-        'description': 'Organizational structure of current employer.'
-    },
-    {
-        'column': 'last_new_job',
-        'type': 'Ordinal',
-        'plausible_range': 'never < 1 < 2 < 3 < 4 < >4, Unknown',
-        'role': 'Explanatory Attribute',
-        'description': 'Years elapsed between previous job and current job.'
-    },
-    {
-        'column': 'training_hours',
-        'type': 'Ratio',
-        'plausible_range': '1 to 336 (True zero point at 0)',
-        'role': 'Explanatory Attribute',
-        'description': 'Total completed training and course hours.'
-    },
-    {
-        'column': 'target',
-        'type': 'Nominal (Binary)',
-        'plausible_range': '0 (Reject / Hold), 1 (Proceed to Interview)',
-        'role': 'Target Label (EXCLUDED FROM PREDICTORS)',
-        'description': 'Ground-truth outcome label. Represents candidate readiness / interview transition.'
-    }
+NUMERIC_COLUMNS = ["city_development_index", "training_hours", "experience"]
+CATEGORICAL_COLUMNS = [
+    "relevent_experience",
+    "enrolled_university",
+    "education_level",
+    "major_discipline",
+    "company_size",
+    "company_type",
+    "last_new_job",
 ]
-
-EXCLUDED_COLUMNS_STATEMENT = (
-    "WRITTEN STATEMENT OF EXCLUDED COLUMNS:\n"
-    "1. 'enrollee_id': This is an arbitrary primary key generated by the administrative applicant "
-    "tracking database. It contains 19,158 unique integer identifiers with zero generalisable semantic "
-    "meaning. Including it in predictive modeling introduces extreme risk of identity memorization, overfitting, "
-    "and leakage. It is strictly excluded from all feature vectors and used solely as a case index.\n"
-    "2. 'target': This column represents the ground-truth hiring outcome (whether the candidate changes jobs / "
-    "proceeds to interview). At the exact moment the recruiter runs the shortlisting console on a new applicant "
-    "pool, this future outcome is completely unknown. Training on it as an input would constitute catastrophic "
-    "target leakage. It is exclusively reserved as the supervised training target and test evaluation label."
+MODEL_COLUMNS = NUMERIC_COLUMNS + CATEGORICAL_COLUMNS
+REQUIRED_COLUMNS = NUMERIC_COLUMNS + ["education_level", "relevent_experience"]
+AUDIT_LABELS = {
+    "gender": "Gender",
+    "age_band": "Age band",
+    "institution": "Institution",
+    "experience_band": "Experience band · demo",
+    "education_group": "Education group · demo",
+}
+TARGET_DESCRIPTIONS = {
+    "job_change": "Job-change interest · demonstration outcome, not interview suitability",
+    "interview": "Interview progression · user-supplied outcome",
+}
+EXCLUDED_COLUMNS_STATEMENT = "Identifiers and target are never predictors. Gender, age and institution are audit-only. Bundled labels measure job-change interest. Experience bands and education groups do not establish actual age or institution fairness."
+DATA_DICTIONARY = (
+    [
+        {
+            "column": c,
+            "type": "Numeric" if c in NUMERIC_COLUMNS else "Categorical",
+            "role": "Predictor",
+            "description": "Imputed and encoded inside each training fold.",
+        }
+        for c in MODEL_COLUMNS
+    ]
+    + [
+        {"column": c, "type": "Categorical", "role": "Audit only", "description": label}
+        for c, label in AUDIT_LABELS.items()
+    ]
+    + [
+        {
+            "column": "enrollee_id",
+            "type": "Identifier",
+            "role": "Tracking only",
+            "description": "Unique in the pool; excluded from predictions.",
+        },
+        {
+            "column": "target",
+            "type": "Binary",
+            "role": "Outcome",
+            "description": "0/1, optional for inference; missing labels remain unknown.",
+        },
+    ]
 )
 
 
-def derive_age_band(exp_str):
-    """
-    Derives age_band from experience column (proxy for candidate age).
-    Bands: 0-5, 6-10, 11-15, 16+
-    """
-    if not exp_str or str(exp_str).strip() in ['', 'nan', 'None']:
-        return '6-10'  # Median fallback
-    val = str(exp_str).strip()
-    if val == '<1':
-        years = 0
-    elif val == '>20':
-        years = 21
-    else:
-        try:
-            years = int(float(val))
-        except ValueError:
-            years = 5
+def text(value):
+    value = "" if value is None else str(value).strip()
+    return "" if value.lower() in {"", "nan", "none", "null", "na", "n/a"} else value
 
-    if years <= 5:
-        return '0-5'
-    elif years <= 10:
-        return '6-10'
-    elif years <= 15:
-        return '11-15'
-    else:
-        return '16+'
+
+def number(value, column, row_number="input"):
+    value = text(value)
+    if not value:
+        return None
+    if column == "experience" and value in {"<1", ">20"}:
+        return 0.0 if value == "<1" else 21.0
+    try:
+        result = float(value)
+    except (ValueError, TypeError):
+        raise ValueError(
+            f"Row {row_number}: {column} must be numeric or blank."
+        ) from None
+    lower = 14 if column == "age" else 0
+    upper = {
+        "city_development_index": 1,
+        "training_hours": 100000,
+        "experience": 80,
+        "age": 120,
+    }[column]
+    if not math.isfinite(result) or not lower <= result <= upper:
+        raise ValueError(
+            f"Row {row_number}: {column} must be between {lower} and {upper}."
+        )
+    return result
+
+
+def derive_experience_band(value):
+    y = number(value, "experience")
+    return (
+        "Unknown"
+        if y is None
+        else "0-5"
+        if y <= 5
+        else "6-10"
+        if y <= 10
+        else "11-15"
+        if y <= 15
+        else "16+"
+    )
+
+
+# Compatibility name only; actual age is never derived from experience.
+derive_age_band = derive_experience_band
 
 
 def derive_institution(enrolled, education):
-    """
-    Derives institution from enrolled_university and education_level (proxy for institution pedigree).
-    Categories: Postgraduate Institution, Graduate University, Continuing / Enrolled University,
-                Non-Degree / School, Other / Unknown
-    """
-    enrolled = str(enrolled).strip() if enrolled and str(enrolled).strip() not in ['nan', 'None'] else ''
-    edu = str(education).strip() if education and str(education).strip() not in ['nan', 'None'] else ''
-
-    if edu in ['Phd', 'Masters']:
-        return 'Postgraduate Institution'
-    elif edu == 'Graduate':
-        if enrolled == 'no_enrollment':
-            return 'Graduate University'
-        else:
-            return 'Continuing / Enrolled University'
-    elif edu in ['High School', 'Primary School']:
-        return 'Non-Degree / School'
-    else:
-        return 'Other / Unknown'
+    """Compatibility helper: produces an education grouping, NOT institution pedigree."""
+    if text(education) in {"Phd", "Masters"}:
+        return "Postgraduate"
+    if text(education) == "Graduate":
+        return (
+            "Graduate · enrolled"
+            if text(enrolled) not in {"", "no_enrollment"}
+            else "Graduate"
+        )
+    return (
+        "School / non-degree"
+        if text(education) in {"High School", "Primary School"}
+        else "Unknown"
+    )
 
 
-# ==============================================================================
-# STAGE B: DATA QUALITY AUDIT, REPAIR, PROVENANCE, AND VALIDATE()
-# ==============================================================================
+def clean_row(raw, index=0):
+    row = {str(k).strip(): text(v) for k, v in raw.items() if k is not None}
+    if any(len(v) > 200 for v in row.values()):
+        raise ValueError(f"Row {index + 2}: field exceeds 200 characters.")
+    row["enrollee_id"] = row.get("enrollee_id") or f"applicant-{index + 1:06d}"
+    for c in NUMERIC_COLUMNS:
+        original = row.get(c, "")
+        row[c] = number(original, c, index + 2)
+        row["_prov_" + c] = (
+            "missing_for_pipeline_imputation"
+            if row[c] is None
+            else "boundary_mapping"
+            if original in {"<1", ">20"}
+            else "observed"
+        )
+    for c in CATEGORICAL_COLUMNS + ["gender"]:
+        original = row.get(c, "")
+        row[c] = original or "Unknown"
+        if c == "company_size":
+            row[c] = row[c].replace("/", "-")
+        row["_prov_" + c] = (
+            "missing_as_unknown"
+            if not original
+            else "delimiter_standardized"
+            if original != row[c]
+            else "observed"
+        )
+    t = row.get("target", "")
+    if t and t not in {"0", "1", "0.0", "1.0"}:
+        raise ValueError(f"Row {index + 2}: target must be 0, 1 or blank.")
+    row["target"] = int(float(t)) if t else None
+    row["experience_band"] = derive_experience_band(row["experience"])
+    row["education_group"] = derive_institution(
+        row["enrolled_university"], row["education_level"]
+    )
+    if row.get("age"):
+        age = number(row["age"], "age", index + 2)
+        row["age"] = age
+        row["age_band"] = row.get("age_band") or (
+            "Under 25"
+            if age < 25
+            else "25-34"
+            if age < 35
+            else "35-44"
+            if age < 45
+            else "45-54"
+            if age < 55
+            else "55+"
+        )
+    row["age_band"] = row.get("age_band") or "Unknown"
+    row["institution"] = row.get("institution") or "Unknown"
+    return row
 
-def validate(data):
-    """
-    Validation function of at least ten assertions.
-    Passes on cleaned data, and raises AssertionError on raw or corrupt data.
-    Returns (status: bool, report: list of dicts).
-    """
+
+def validate(rows):
     checks = [
-        ("No missing values in 'gender' column", lambda rows: all(r.get('gender') not in ['', None, 'nan'] for r in rows)),
-        ("No missing values in 'city_development_index'", lambda rows: all(r.get('city_development_index') not in ['', None, 'nan'] for r in rows)),
-        ("No missing values in 'training_hours'", lambda rows: all(r.get('training_hours') not in ['', None, 'nan'] for r in rows)),
-        ("Valid interval for 'city_development_index' [0.0, 1.0]", lambda rows: all(0.0 <= float(r.get('city_development_index', -1)) <= 1.0 for r in rows)),
-        ("Positive ratio measurement for 'training_hours' (hours >= 0)", lambda rows: all(float(r.get('training_hours', -1)) >= 0 for r in rows)),
-        ("Experience string boundaries ('<1', '>20') normalized to integers", lambda rows: all(str(r.get('experience')) not in ['<1', '>20'] for r in rows)),
-        ("No slash delimiter formatting anomalies in 'company_size' ('10/49' -> '10-49')", lambda rows: all('/' not in str(r.get('company_size', '')) for r in rows)),
-        ("Derived 'age_band' present and valid in {'0-5', '6-10', '11-15', '16+'}", lambda rows: all(r.get('age_band') in ['0-5', '6-10', '11-15', '16+'] for r in rows)),
-        ("Derived 'institution' present and in recognized pedigree tiers", lambda rows: all(r.get('institution') in ['Postgraduate Institution', 'Graduate University', 'Continuing / Enrolled University', 'Non-Degree / School', 'Other / Unknown'] for r in rows)),
-        ("Provenance tracking columns present for all repaired fields", lambda rows: all('_prov_gender' in r and '_prov_experience' in r and '_prov_company_size' in r for r in rows)),
+        ("Dataset contains records", bool(rows)),
+        (
+            "Identifiers are unique",
+            len({r.get("enrollee_id") for r in rows}) == len(rows),
+        ),
+        ("Every record has an identifier", all(r.get("enrollee_id") for r in rows)),
+        (
+            "Outcomes are binary or unavailable",
+            all(r.get("target") in (0, 1, None) for r in rows),
+        ),
+        (
+            "City index is bounded or explicitly missing",
+            all(
+                r.get("city_development_index") is None
+                or isinstance(r.get("city_development_index"), (int, float))
+                and 0 <= r["city_development_index"] <= 1
+                for r in rows
+            ),
+        ),
+        (
+            "Hours are nonnegative or explicitly missing",
+            all(
+                r.get("training_hours") is None
+                or isinstance(r.get("training_hours"), (int, float))
+                and r["training_hours"] >= 0
+                for r in rows
+            ),
+        ),
+        (
+            "Experience has numeric range mappings",
+            all(
+                r.get("experience") is None
+                or isinstance(r.get("experience"), (int, float))
+                for r in rows
+            ),
+        ),
+        (
+            "Categorical missingness is explicit",
+            all(all(r.get(c) for c in CATEGORICAL_COLUMNS + ["gender"]) for r in rows),
+        ),
+        (
+            "Company-size delimiters are standardized",
+            all("/" not in str(r.get("company_size", "")) for r in rows),
+        ),
+        (
+            "Repair provenance is present",
+            all("_prov_experience" in r and "_prov_gender" in r for r in rows),
+        ),
+        (
+            "Experience grouping is separate from age",
+            all(
+                r.get("experience_band") in {"0-5", "6-10", "11-15", "16+", "Unknown"}
+                for r in rows
+            ),
+        ),
     ]
-
-    report = []
-    overall_passed = True
-    for desc, check_fn in checks:
-        try:
-            passed = check_fn(data)
-        except Exception:
-            passed = False
-        report.append({'assertion': desc, 'passed': passed})
-        if not passed:
-            overall_passed = False
-
-    return overall_passed, report
+    report = [{"assertion": s, "passed": bool(p)} for s, p in checks]
+    return all(x["passed"] for x in report), report
 
 
 class DataManager:
-    """
-    Manages data ingestion, preprocessing, proxy extraction,
-    data quality audit, repairs with provenance, and train/test splitting.
-    """
-
-    def __init__(self, filepath='aug_train.csv'):
-        self.filepath = filepath
-        self.raw_data = []          # List of raw dict rows
-        self.headers = []           # Original CSV headers
-        self.processed_data = []    # Cleaned rows with derived attributes & provenance
-        self.feature_names = []     # Names of encoded features for modeling
-        self.column_origin_map = {} # Maps encoded feature -> original column name
-        self.train_indices = []
-        self.test_indices = []
-        self.medians = {}           # Imputation values for numbers
-        self.categories_map = {}    # Unique values for one-hot encoding
-        self.correlations = {}      # Correlation of features with protected attributes
-        self.quality_audit = {}     # Stage B fault categories & counts
-        self.before_after_table = [] # Stage B repair effects table
-        self.validation_results = {} # Stage B 10-point validate() report
-
-        if os.path.exists(filepath):
-            self.load_dataset(filepath)
-
-    def load_dataset(self, filepath):
-        """Loads CSV dataset and populates raw records."""
-        self.filepath = filepath
-        self.raw_data = []
-        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-            reader = csv.DictReader(f)
-            self.headers = reader.fieldnames
-            for row in reader:
-                self.raw_data.append(row)
-
-        self.audit_raw_data()
-        self.preprocess_and_encode()
-        self.run_validation()
-        self.stratified_split(test_size=0.2, random_state=42)
-        self.compute_proxy_correlations()
-
-    def audit_raw_data(self):
-        """
-        Stage B: Detects at least six distinct fault categories in the raw data
-        using Lecture 2 vocabulary, with expressions and counts of affected records.
-        """
-        n_total = len(self.raw_data)
-        if n_total == 0:
-            return
-
-        # Fault 1: Incompleteness / Missing Values (gender)
-        cnt_missing_gender = sum(1 for r in self.raw_data if not r.get('gender') or r['gender'].strip() in ['', 'nan', 'NaN', 'None'])
-        # Fault 1b: Other missing fields for comprehensive audit
-        cnt_missing_company_size = sum(1 for r in self.raw_data if not r.get('company_size') or r['company_size'].strip() in ['', 'nan', 'None'])
-        cnt_missing_company_type = sum(1 for r in self.raw_data if not r.get('company_type') or r['company_type'].strip() in ['', 'nan', 'None'])
-        cnt_missing_major = sum(1 for r in self.raw_data if not r.get('major_discipline') or r['major_discipline'].strip() in ['', 'nan', 'None'])
-
-        # Fault 2: Syntactic Inconsistency / Boundary String Encoding (experience)
-        cnt_exp_boundary = sum(1 for r in self.raw_data if r.get('experience') in ['<1', '>20'])
-
-        # Fault 3: Outliers / Extreme Values (training_hours > 185, Tukey IQR upper fence)
-        cnt_outlier_hours = sum(1 for r in self.raw_data if float(r.get('training_hours', 0)) > 185.0)
-
-        # Fault 4: Arbitrary Identifier / Leakage Risk (enrollee_id in feature space)
-        all_ids = set(r.get('enrollee_id') for r in self.raw_data)
-        cnt_id_leakage = len(all_ids) if len(all_ids) == n_total else 0
-
-        # Fault 5: Delimiter Formatting Contamination (company_size containing slash)
-        cnt_slash_company = sum(1 for r in self.raw_data if '/' in str(r.get('company_size', '')))
-
-        # Fault 6: Categorical Redundancy / Null Conflict (enrolled_university missing while education present)
-        cnt_enroll_conflict = sum(1 for r in self.raw_data if not r.get('enrolled_university') and r.get('education_level'))
-
-        self.quality_audit = {
-            'faults': [
-                {
-                    'category': '1. Incompleteness (Missing Values)',
-                    'attribute': 'gender (and company_size, company_type, major)',
-                    'expression': "row['gender'] in [None, '', 'nan', 'NaN']",
-                    'affected_count': cnt_missing_gender,
-                    'remediation': "Impute missing categories with explicit 'Unknown' category and track provenance."
-                },
-                {
-                    'category': '2. Syntactic Inconsistency (Boundary Encodings)',
-                    'attribute': 'experience',
-                    'expression': "row['experience'] in ['<1', '>20']",
-                    'affected_count': cnt_exp_boundary,
-                    'remediation': "Normalize '<1' to 0 and '>20' to 21 years integer; derive standardized 4-tier age bands."
-                },
-                {
-                    'category': '3. Outliers & Extreme Values',
-                    'attribute': 'training_hours',
-                    'expression': "row['training_hours'] > 185.0 (Tukey Q3 + 1.5*IQR)",
-                    'affected_count': cnt_outlier_hours,
-                    'remediation': "Continuous scaling / standard scaling applied for distance-based models; robust median imputation."
-                },
-                {
-                    'category': '4. Arbitrary Identifier / Leakage Risk',
-                    'attribute': 'enrollee_id',
-                    'expression': "len(set(ids)) == len(records)",
-                    'affected_count': cnt_id_leakage,
-                    'remediation': "Exclude enrollee_id strictly from model features to prevent memorization and target leakage."
-                },
-                {
-                    'category': '5. Delimiter Formatting Contamination',
-                    'attribute': 'company_size',
-                    'expression': "'/' in str(row['company_size'])",
-                    'affected_count': cnt_slash_company,
-                    'remediation': "Replace slash notation ('10/49') with standardized hyphenated range ('10-49')."
-                },
-                {
-                    'category': '6. Categorical Redundancy & Null Conflict',
-                    'attribute': 'enrolled_university',
-                    'expression': "row['enrolled_university'] == '' and row['education_level'] != ''",
-                    'affected_count': cnt_enroll_conflict,
-                    'remediation': "Impute missing university status as 'Unknown' while preserving composite education tier mapping."
-                }
-            ],
-            'total_records': n_total
-        }
-
-        # Build Before-and-After table
-        self.before_after_table = [
-            {
-                'field': 'gender',
-                'fault': 'Missing Values',
-                'expression': "val in ['', None, 'nan']",
-                'before_count': cnt_missing_gender,
-                'after_count': 0,
-                'action_taken': "Imputed with 'Unknown'; added '_prov_gender' provenance column."
-            },
-            {
-                'field': 'experience',
-                'fault': 'Boundary String Encodings',
-                'expression': "val in ['<1', '>20']",
-                'before_count': cnt_exp_boundary,
-                'after_count': 0,
-                'action_taken': "Mapped to numeric 0 and 21; derived standardized 'age_band'; added '_prov_experience'."
-            },
-            {
-                'field': 'company_size',
-                'fault': 'Delimiter Contamination',
-                'expression': "'/' in str(val)",
-                'before_count': cnt_slash_company,
-                'after_count': 0,
-                'action_taken': "Normalized '10/49' to '10-49'; added '_prov_company_size'."
-            },
-            {
-                'field': 'company_size',
-                'fault': 'Missing Values',
-                'expression': "val in ['', None, 'nan']",
-                'before_count': cnt_missing_company_size,
-                'after_count': 0,
-                'action_taken': "Imputed with 'Unknown'; tracked provenance."
-            },
-            {
-                'field': 'company_type',
-                'fault': 'Missing Values',
-                'expression': "val in ['', None, 'nan']",
-                'before_count': cnt_missing_company_type,
-                'after_count': 0,
-                'action_taken': "Imputed with 'Unknown'; added '_prov_company_type'."
-            },
-            {
-                'field': 'enrollee_id',
-                'fault': 'Identifier Leakage in Feature Space',
-                'expression': "is_feature(enrollee_id)",
-                'before_count': cnt_id_leakage,
-                'after_count': 0,
-                'action_taken': "Removed from feature matrix; retained strictly as tracking metadata."
-            }
-        ]
-
-    def preprocess_and_encode(self):
-        """
-        Cleans data, derives protected attributes, computes medians,
-        adds provenance columns, and constructs one-hot encoded feature matrices.
-        """
-        # Step 1: Extract numeric values to compute medians
-        cdi_vals = []
-        training_hours_vals = []
-        for r in self.raw_data:
-            try:
-                cdi_vals.append(float(r.get('city_development_index', 0.8)))
-            except Exception:
-                pass
-            try:
-                training_hours_vals.append(float(r.get('training_hours', 50)))
-            except Exception:
-                pass
-
-        cdi_vals.sort()
-        training_hours_vals.sort()
-        self.medians['city_development_index'] = cdi_vals[len(cdi_vals) // 2] if cdi_vals else 0.8
-        self.medians['training_hours'] = training_hours_vals[len(training_hours_vals) // 2] if training_hours_vals else 50.0
-
-        # Step 2: Categorical features to encode
-        categorical_cols = [
-            'gender', 'relevent_experience', 'enrolled_university',
-            'education_level', 'major_discipline', 'company_size',
-            'company_type', 'last_new_job'
-        ]
-
-        cat_unique = {col: set() for col in categorical_cols}
-        self.processed_data = []
-
-        for idx, row in enumerate(self.raw_data):
-            processed_row = dict(row)
-
-            # Target label: 1 (proceed to interview) or 0 (reject)
-            try:
-                processed_row['target'] = int(float(row.get('target', 0)))
-            except Exception:
-                processed_row['target'] = 0
-
-            # -------------------------------------------------------------
-            # REPAIRS & PROVENANCE TRACKING (Stage B)
-            # -------------------------------------------------------------
-            # 1. Gender repair & provenance
-            raw_g = row.get('gender', '').strip()
-            if not raw_g or raw_g.lower() in ['nan', 'none']:
-                processed_row['gender'] = 'Unknown'
-                processed_row['_prov_gender'] = 'imputed_unknown'
-            else:
-                processed_row['gender'] = raw_g
-                processed_row['_prov_gender'] = 'raw_observed'
-
-            # 2. Experience repair & provenance
-            raw_exp = str(row.get('experience', '')).strip()
-            if not raw_exp or raw_exp.lower() in ['nan', 'none', '']:
-                processed_row['experience'] = '5'
-                processed_row['_prov_experience'] = 'imputed_median'
-            elif raw_exp == '<1':
-                processed_row['experience'] = '0'
-                processed_row['_prov_experience'] = 'mapped_lower_bound'
-            elif raw_exp == '>20':
-                processed_row['experience'] = '21'
-                processed_row['_prov_experience'] = 'mapped_upper_bound'
-            else:
-                try:
-                    processed_row['experience'] = str(int(float(raw_exp)))
-                    processed_row['_prov_experience'] = 'raw_numeric'
-                except Exception:
-                    processed_row['experience'] = '5'
-                    processed_row['_prov_experience'] = 'imputed_fallback'
-
-            # Derived age_band proxy
-            processed_row['age_band'] = derive_age_band(row.get('experience', ''))
-
-            # Derived institution proxy
-            processed_row['institution'] = derive_institution(
-                row.get('enrolled_university', ''),
-                row.get('education_level', '')
+    def __init__(
+        self,
+        filepath=None,
+        *,
+        rows=None,
+        training=True,
+        target_kind="job_change",
+        name=None,
+    ):
+        if target_kind not in TARGET_DESCRIPTIONS:
+            raise ValueError("Outcome type must be job_change or interview.")
+        self.target_kind = target_kind
+        self.name = name or (
+            Path(filepath).name if filepath else "Uploaded applicant pool"
+        )
+        if rows is None:
+            with open(filepath, encoding="utf-8-sig", newline="") as f:
+                reader = csv.DictReader(f)
+                headers = reader.fieldnames or []
+                if len(headers) != len(set(c.strip() for c in headers)):
+                    raise ValueError("Duplicate CSV column names.")
+                rows = list(reader)
+        self.headers = [str(c).strip() for c in rows[0]] if rows else []
+        missing = sorted(set(REQUIRED_COLUMNS) - set(self.headers))
+        if missing:
+            raise ValueError("Missing required columns: " + ", ".join(missing))
+        if not 1 <= len(rows) <= 100000:
+            raise ValueError("Provide 1 to 100,000 rows.")
+        if any(None in r for r in rows):
+            raise ValueError("CSV has extra values; check delimiters and quoting.")
+        self.raw_data = [{str(k).strip(): v for k, v in r.items()} for r in rows]
+        self.processed_data = [clean_row(r, i) for i, r in enumerate(self.raw_data)]
+        for column in ["gender", "age_band", "institution"]:
+            if len({r[column] for r in self.processed_data}) > 500:
+                raise ValueError(f"{column} exceeds 500 audit groups. Supply meaningful grouped values.")
+        if training and sum(len({r[c] for r in self.processed_data}) for c in CATEGORICAL_COLUMNS) > 250:
+            raise ValueError("Training exceeds 250 combined categorical values. Group high-cardinality predictors first.")
+        passed, report = validate(self.processed_data)
+        if not passed:
+            raise ValueError(
+                "Validation failed: "
+                + "; ".join(r["assertion"] for r in report if not r["passed"])
             )
-
-            # 3. Company size repair (slash formatting & missing)
-            raw_cs = str(row.get('company_size', '')).strip()
-            if not raw_cs or raw_cs.lower() in ['nan', 'none', '']:
-                processed_row['company_size'] = 'Unknown'
-                processed_row['_prov_company_size'] = 'imputed_unknown'
-            elif '/' in raw_cs:
-                processed_row['company_size'] = raw_cs.replace('/', '-')
-                processed_row['_prov_company_size'] = 'fixed_slash_format'
-            else:
-                processed_row['company_size'] = raw_cs
-                processed_row['_prov_company_size'] = 'raw_observed'
-
-            # 4. Numeric fields (CDI & Training Hours)
-            try:
-                processed_row['city_development_index'] = float(row.get('city_development_index', self.medians['city_development_index']))
-                processed_row['_prov_city_development_index'] = 'raw_observed'
-            except Exception:
-                processed_row['city_development_index'] = self.medians['city_development_index']
-                processed_row['_prov_city_development_index'] = 'imputed_median'
-
-            try:
-                processed_row['training_hours'] = float(row.get('training_hours', self.medians['training_hours']))
-                processed_row['_prov_training_hours'] = 'raw_observed'
-            except Exception:
-                processed_row['training_hours'] = self.medians['training_hours']
-                processed_row['_prov_training_hours'] = 'imputed_median'
-
-            # 5. Remaining categorical fields
-            for col in ['relevent_experience', 'enrolled_university', 'education_level', 'major_discipline', 'company_type', 'last_new_job']:
-                v = processed_row.get(col, '').strip()
-                if not v or v.lower() in ['nan', 'none']:
-                    v = 'Unknown'
-                    processed_row[f'_prov_{col}'] = 'imputed_unknown'
-                else:
-                    processed_row[f'_prov_{col}'] = 'raw_observed'
-                processed_row[col] = v
-                cat_unique[col].add(v)
-
-            cat_unique['gender'].add(processed_row['gender'])
-            cat_unique['company_size'].add(processed_row['company_size'])
-
-            # Unique enrollee id
-            processed_row['enrollee_id'] = row.get('enrollee_id', str(idx + 1))
-            self.processed_data.append(processed_row)
-
-        self.categories_map = {col: sorted(list(vals)) for col, vals in cat_unique.items()}
-
-        # Build feature names and mapping to original column
-        self.feature_names = ['city_development_index', 'training_hours']
-        self.column_origin_map = {
-            'city_development_index': 'city_development_index',
-            'training_hours': 'training_hours'
-        }
-
-        for col in categorical_cols:
-            for cat_val in self.categories_map[col]:
-                feat_name = f"{col}_{cat_val}"
-                self.feature_names.append(feat_name)
-                self.column_origin_map[feat_name] = col
-
-    def run_validation(self):
-        """Runs the 10-point validate() function on cleaned data and on raw data."""
-        cleaned_pass, cleaned_report = validate(self.processed_data)
         raw_pass, raw_report = validate(self.raw_data)
-
         self.validation_results = {
-            'cleaned_passed': cleaned_pass,
-            'raw_passed': raw_pass,
-            'cleaned_assertions': cleaned_report,
-            'raw_assertions': raw_report,
-            'summary': f"Cleaned data passed all {len(cleaned_report)} assertions (100%). Raw data failed {sum(1 for r in raw_report if not r['passed'])} assertions as expected."
+            "cleaned_passed": passed,
+            "cleaned_assertions": report,
+            "raw_passed": raw_pass,
+            "raw_assertions": raw_report,
+        }
+        self.dataset_id = hashlib.sha256(
+            json.dumps(self.processed_data, sort_keys=True).encode()
+        ).hexdigest()[:16]
+        self.train_indices, self.validation_indices, self.test_indices = [], [], []
+        if training:
+            labels = [r["target"] for r in self.processed_data]
+            counts = Counter(labels)
+            if None in counts or set(counts) != {0, 1} or min(counts.values()) < 10:
+                raise ValueError(
+                    "Training requires complete 0/1 labels and at least 10 rows per class. Use applicant upload for unlabeled pools."
+                )
+            dev, test = train_test_split(
+                np.arange(len(labels)), test_size=0.2, random_state=42, stratify=labels
+            )
+            train, val = train_test_split(
+                dev, test_size=0.25, random_state=42, stratify=np.asarray(labels)[dev]
+            )
+            self.train_indices, self.validation_indices, self.test_indices = [
+                sorted(x.tolist()) for x in (train, val, test)
+            ]
+        self.audit_attributes = [
+            "gender",
+            "age_band"
+            if any(r["age_band"] != "Unknown" for r in self.processed_data)
+            else "experience_band",
+            "institution"
+            if any(r["institution"] != "Unknown" for r in self.processed_data)
+            else "education_group",
+        ]
+        self._audit_quality()
+
+    @classmethod
+    def from_csv(cls, content, **kwargs):
+        try:
+            decoded = content.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            raise ValueError("CSV must use UTF-8 encoding.") from None
+        reader = csv.DictReader(io.StringIO(decoded, newline=""))
+        if not reader.fieldnames or len(reader.fieldnames) != len(
+            set(c.strip() for c in reader.fieldnames)
+        ):
+            raise ValueError("CSV needs a header with unique column names.")
+        return cls(rows=list(reader), **kwargs)
+
+    def _audit_quality(self):
+        self.before_after_table = []
+        for c in NUMERIC_COLUMNS + CATEGORICAL_COLUMNS + ["gender"]:
+            for action, n in Counter(
+                r["_prov_" + c] for r in self.processed_data
+            ).items():
+                if action != "observed":
+                    self.before_after_table.append(
+                        {
+                            "field": c,
+                            "action": action,
+                            "affected_count": n,
+                            "resolution": "Imputed inside each fitted pipeline"
+                            if action == "missing_for_pipeline_imputation"
+                            else "Standardized with provenance",
+                        }
+                    )
+        hours = [
+            r["training_hours"]
+            for r in self.processed_data
+            if r["training_hours"] is not None
+        ]
+        q1, q3 = np.quantile(hours, [0.25, 0.75]) if hours else (0, 0)
+        fence = float(q3 + 1.5 * (q3 - q1))
+        self.quality_audit = {
+            "missing": {
+                c: sum(not text(r.get(c)) for r in self.raw_data)
+                for c in NUMERIC_COLUMNS + CATEGORICAL_COLUMNS + ["gender"]
+            },
+            "outlier_fence": fence,
+            "outlier_count": sum(v > fence for v in hours),
+            "outlier_note": "Flagged for inspection. Scaling is not outlier removal.",
+            "repairs": self.before_after_table,
         }
 
-    def get_feature_matrix(self, rows, active_features=None, standardize=False):
-        """
-        Constructs numeric feature vectors for the given rows.
-        If standardize is True, applies z-score standardization (vital for KNN).
-        """
-        if active_features is None:
-            active_features = self.feature_names
+    def frame(self, rows, columns=None):
+        columns = columns or MODEL_COLUMNS
+        return pd.DataFrame(
+            [
+                {
+                    c: (np.nan if r.get(c) is None else r[c])
+                    if c in NUMERIC_COLUMNS
+                    else r.get(c, "Unknown")
+                    for c in columns
+                }
+                for r in rows
+            ],
+            columns=columns,
+        )
 
-        matrix = []
-        for r in rows:
-            vec = []
-            for f in active_features:
-                if f == 'city_development_index':
-                    vec.append(r['city_development_index'])
-                elif f == 'training_hours':
-                    vec.append(r['training_hours'] / 100.0)
-                else:
-                    col = self.column_origin_map.get(f)
-                    val = f[len(col) + 1:] if col else ''
-                    vec.append(1.0 if r.get(col) == val else 0.0)
-            matrix.append(vec)
-
-        if standardize and len(matrix) > 0:
-            n_cols = len(matrix[0])
-            n_rows = len(matrix)
-            for j in range(n_cols):
-                col_vals = [matrix[i][j] for i in range(n_rows)]
-                mean_j = sum(col_vals) / n_rows
-                std_j = math.sqrt(sum((v - mean_j)**2 for v in col_vals) / n_rows) + 1e-9
-                for i in range(n_rows):
-                    matrix[i][j] = (matrix[i][j] - mean_j) / std_j
-
-        return matrix
-
-    def stratified_split(self, test_size=0.2, random_state=42):
-        """
-        Stratified train/test split on target label using fixed seed.
-        Ensures consistent 80/20 split across runs.
-        """
-        pos_indices = [i for i, r in enumerate(self.processed_data) if r['target'] == 1]
-        neg_indices = [i for i, r in enumerate(self.processed_data) if r['target'] == 0]
-
-        rng = random.Random(random_state)
-        rng.shuffle(pos_indices)
-        rng.shuffle(neg_indices)
-
-        n_pos_test = int(len(pos_indices) * test_size)
-        n_neg_test = int(len(neg_indices) * test_size)
-
-        test_idx = pos_indices[:n_pos_test] + neg_indices[:n_neg_test]
-        train_idx = pos_indices[n_pos_test:] + neg_indices[n_neg_test:]
-
-        self.train_indices = sorted(train_idx)
-        self.test_indices = sorted(test_idx)
-
-    def compute_proxy_correlations(self):
-        """
-        Computes Pearson correlation between all encoded features and
-        protected attributes (gender, age_band, institution) to reveal
-        implicit proxies.
-        """
-        protected_attrs = ['gender', 'age_band', 'institution']
-        prot_categories = {}
-        for p in protected_attrs:
-            unique_vals = sorted(list(set(r[p] for r in self.processed_data)))
-            prot_categories[p] = unique_vals
-
-        X = self.get_feature_matrix(self.processed_data)
-        N = len(self.processed_data)
-        if N == 0:
-            return
-
-        f_means = [sum(X[i][j] for i in range(N)) / N for j in range(len(self.feature_names))]
-        self.feature_means = {feat: f_means[j] for j, feat in enumerate(self.feature_names)}
-        f_stds = []
-        for j in range(len(self.feature_names)):
-            var = sum((X[i][j] - f_means[j]) ** 2 for i in range(N)) / N
-            f_stds.append(math.sqrt(var) if var > 1e-9 else 1e-9)
-
-        corr_results = []
-        for j, feat in enumerate(self.feature_names):
-            orig_col = self.column_origin_map.get(feat, feat)
-            row_entry = {
-                'feature': feat,
-                'original_column': orig_col,
-                'corr_gender': 0.0,
-                'corr_age_band': 0.0,
-                'corr_institution': 0.0,
-                'max_correlation': 0.0,
-                'highest_proxy_group': 'None',
-                'is_high_risk_proxy': False
-            }
-
-            for p in protected_attrs:
-                max_p_corr = 0.0
-                best_group = ''
-                for cat in prot_categories[p]:
-                    p_vec = [1.0 if self.processed_data[i][p] == cat else 0.0 for i in range(N)]
-                    p_mean = sum(p_vec) / N
-                    p_var = sum((v - p_mean) ** 2 for v in p_vec) / N
-                    p_std = math.sqrt(p_var) if p_var > 1e-9 else 1e-9
-
-                    cov = sum((X[i][j] - f_means[j]) * (p_vec[i] - p_mean) for i in range(N)) / N
-                    r = abs(cov / (f_stds[j] * p_std))
-                    if r > max_p_corr:
-                        max_p_corr = r
-                        best_group = f"{p}: {cat}"
-
-                if p == 'gender':
-                    row_entry['corr_gender'] = round(max_p_corr, 4)
-                elif p == 'age_band':
-                    row_entry['corr_age_band'] = round(max_p_corr, 4)
-                elif p == 'institution':
-                    row_entry['corr_institution'] = round(max_p_corr, 4)
-
-                if max_p_corr > row_entry['max_correlation']:
-                    row_entry['max_correlation'] = round(max_p_corr, 4)
-                    row_entry['highest_proxy_group'] = best_group
-
-            row_entry['is_high_risk_proxy'] = row_entry['max_correlation'] >= 0.25
-            corr_results.append(row_entry)
-
-        corr_results.sort(key=lambda x: x['max_correlation'], reverse=True)
-        self.correlations = corr_results
+    def rows_for(self, split):
+        return [self.processed_data[i] for i in getattr(self, split + "_indices")]
 
     def get_summary(self):
-        """Returns comprehensive summary for Screen 1."""
-        total = len(self.processed_data)
-        if total == 0:
-            return {}
-
-        targets = Counter(r['target'] for r in self.processed_data)
-        genders = Counter(r['gender'] for r in self.processed_data)
-        age_bands = Counter(r['age_band'] for r in self.processed_data)
-        institutions = Counter(r['institution'] for r in self.processed_data)
-
-        # Baseline accuracy (majority class)
-        majority_count = max(targets.get(0, 0), targets.get(1, 0))
-        baseline_accuracy = round(majority_count / total, 4)
-
+        n = len(self.processed_data)
+        labels = [r["target"] for r in self.processed_data if r["target"] is not None]
+        counts = Counter(labels)
         return {
-            'total_rows': total,
-            'train_rows': len(self.train_indices),
-            'test_rows': len(self.test_indices),
-            'num_features': len(self.feature_names),
-            'majority_baseline_accuracy': baseline_accuracy,
-            'class_balance': {
-                'positive': targets.get(1, 0),
-                'negative': targets.get(0, 0),
-                'positive_pct': round((targets.get(1, 0) / total) * 100, 2),
-                'negative_pct': round((targets.get(0, 0) / total) * 100, 2)
+            "name": self.name,
+            "dataset_id": self.dataset_id,
+            "total_rows": n,
+            "train_rows": len(self.train_indices),
+            "validation_rows": len(self.validation_indices),
+            "test_rows": len(self.test_indices),
+            "num_source_features": len(MODEL_COLUMNS),
+            "target_kind": self.target_kind,
+            "target_description": TARGET_DESCRIPTIONS[self.target_kind],
+            "label_coverage": len(labels) / n,
+            "class_balance": {
+                "positive": counts[1],
+                "negative": counts[0],
+                "unknown": n - len(labels),
+                "positive_pct": round(100 * counts[1] / len(labels), 2)
+                if labels
+                else None,
             },
-            'gender_dist': dict(genders),
-            'age_band_dist': dict(age_bands),
-            'institution_dist': dict(institutions),
-            'quality_audit': self.quality_audit,
-            'before_after_table': self.before_after_table,
-            'validation_results': self.validation_results,
-            'data_dictionary': DATA_DICTIONARY,
-            'excluded_statement': EXCLUDED_COLUMNS_STATEMENT,
-            'preview': self.processed_data[:10]
+            "majority_baseline_accuracy": max(counts.values()) / len(labels)
+            if labels
+            else None,
+            "audit_attributes": [
+                {
+                    "key": a,
+                    "label": AUDIT_LABELS[a],
+                    "observed": a in {"gender", "age_band", "institution"},
+                }
+                for a in self.audit_attributes
+            ],
+            "gender_coverage": sum(
+                r["gender"] != "Unknown" for r in self.processed_data
+            )
+            / n,
+            "quality_audit": self.quality_audit,
+            "before_after_table": self.before_after_table,
+            "validation_results": self.validation_results,
+            "data_dictionary": DATA_DICTIONARY,
+            "excluded_statement": EXCLUDED_COLUMNS_STATEMENT,
+            "preview": self.processed_data[:5],
         }

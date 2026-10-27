@@ -1,0 +1,7 @@
+enrollee_id,city_development_index,training_hours,experience,education_level,relevent_experience,enrolled_university,major_discipline,company_size,company_type,last_new_job,gender,age_band,institution
+DEMO-001,0.82,55,8,Graduate,Has relevent experience,no_enrollment,STEM,50-99,Pvt Ltd,2,Female,25-34,Example College A
+DEMO-002,0.69,90,4,Masters,Has relevent experience,no_enrollment,STEM,100-500,Public Sector,1,Male,25-34,Example College B
+DEMO-003,0.91,35,15,Graduate,Has relevent experience,no_enrollment,Business Degree,1000-4999,Pvt Ltd,4,Other,35-44,Example College A
+DEMO-004,0.74,70,2,Graduate,No relevent experience,Full time course,STEM,10-49,Funded Startup,1,Female,Under 25,Example College C
+DEMO-005,,40,11,Phd,Has relevent experience,no_enrollment,STEM,,NGO,2,Male,35-44,Example College B
+DEMO-006,0.78,,6,Graduate,Has relevent experience,Part time course,Arts,50-99,Pvt Ltd,1,,25-34,
