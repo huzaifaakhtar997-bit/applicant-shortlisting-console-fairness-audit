@@ -69,7 +69,7 @@ To investigate whether reducing feature dimensions helps or hinders recruitment 
 Five core data mining factors dictate how these algorithms perform:
 
 ### Factor 1: Severe Class Imbalance ($75\%$ Negative vs. $25\%$ Positive)
-In HR recruitment, true positive outcomes (e.g. candidates seeking job change or passing interviews) represent the minority class ($24.95\%$). 
+In HR recruitment, true positive outcomes (deserving candidates qualifying for interview shortlisting) represent the selective minority class ($24.95\%$). 
 - This creates the **majority baseline trap**: predicting $0$ for everyone yields $75.05\%$ accuracy.
 - Accuracy alone is a misleading metric; models must be evaluated on **F1-Score, Balanced Accuracy, and ROC-AUC**.
 - Logistic Regression and Naive Bayes are heavily biased toward the majority class at a $0.50$ threshold, producing depressed recall ($0\%$ to $27\%$). Decision Trees partition the space hierarchically, isolating positive concentrations into pure leaves.

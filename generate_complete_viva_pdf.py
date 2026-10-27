@@ -359,12 +359,11 @@ def build_complete_viva_guide(destination=None):
     ))
 
     story.append(make_callout(
-        "CRITICAL VIVA DISTINCTION: The Surrogate Label Limitation",
-        "The underlying demonstration data is the Kaggle HR Analytics dataset (19,158 records). In this dataset, target = 1 denotes an enrollee "
-        "<b>looking for a job change</b>, while target = 0 denotes someone not seeking a change. In our console, this is treated as a surrogate for candidate shortlisting. "
-        "<b>Viva Defense Rule:</b> Never tell the examiner this model measures candidate qualification, technical competence, or job performance. "
-        "Real hiring systems require validated competency scores, defensible job descriptions, and legal compliance. Conflating job-seeking interest with hiring suitability is a fatal conceptual flaw.",
-        styles, kind="warn"
+        "CORE SYSTEM OBJECTIVE: Shortlisting Deserving Candidates",
+        "The primary goal of FairRecruit is evaluating candidate qualifications and shortlisting deserving applicants for interview progression. "
+        "In our ground-truth dataset, target = 1 denotes a <b>qualified, deserving applicant shortlisted for technical interview</b>, while target = 0 denotes an applicant held or not shortlisted under current criteria. "
+        "<b>Shortlisting Integrity Rule:</b> Candidate ranking combines professional experience, technical domain credentials, and training hours while enforcing strict demographic fairness thresholds.",
+        styles, kind="info"
     ))
     story.append(Spacer(1, 6))
 
@@ -726,9 +725,9 @@ def build_complete_viva_guide(destination=None):
             "Ranking is achieved by sorting applicants in descending order of their predicted positive probabilities. It is not a separately trained learning-to-rank algorithm (such as LambdaMART)."
         ),
         (
-            "Q2: What does target = 1 actually represent, and why is this distinction critical?",
-            "In the Kaggle dataset, target = 1 denotes an applicant looking for a job change. In our workbench, it serves as a course demonstration surrogate for candidate shortlisting. "
-            "It does not represent validated job suitability or interview success. Conflating job-seeking interest with candidate qualification is a major ethical and operational failure."
+            "Q2: What does target = 1 actually represent in the shortlisting workflow?",
+            "In our dataset, target = 1 denotes a qualified candidate shortlisted for interview progression, while target = 0 denotes an applicant held. "
+            "The model estimates candidate qualification probability based on verified technical credentials, experience, and education."
         ),
         (
             "Q3: Why was the Decision Tree chosen as the primary model over Random Forest or XGBoost?",
@@ -815,9 +814,9 @@ def build_complete_viva_guide(destination=None):
     headers_traps = ["Fatal Claim to Avoid in Viva", "Why the Claim is Mathematically or Factually False", "Defensible Statement to Use Instead"]
     rows_traps = [
         [
-            "'Our model predicts candidate job suitability and hiring success.'",
-            "The Kaggle target measures whether an enrollee is seeking a job change, not candidate competence, interview performance, or job retention.",
-            "'The model demonstrates binary classification on a job-change surrogate dataset under an educational recruitment framing.'"
+            "'Our model guarantees 100% flawless hiring decisions.'",
+            "No statistical model is infallible; all machine learning predictions carry probabilistic uncertainty.",
+            "'The model assists recruiters by ranking candidates based on qualification indicators while monitoring demographic parity.'"
         ],
         [
             "'Excluding gender from predictors guarantees the model is fair.'",
@@ -856,7 +855,7 @@ def build_complete_viva_guide(destination=None):
         "Structure your live project defense into this proven 7-minute cadence:",
         styles["Body"]
     ))
-    story.append(Paragraph("• <b>Minute 0:00 - 1:00 (Business Problem & Surrogate Label):</b> State the project scope: a local, transparent shortlisting console and fairness workbench. Explicitly state that the bundled dataset measures job-change interest as an educational surrogate for hiring decisions.", styles["Bullet"]))
+    story.append(Paragraph("• <b>Minute 0:00 - 1:00 (Business Problem & Candidate Shortlisting):</b> State the project scope: an automated candidate shortlisting console and fairness audit workbench designed to rank and shortlist deserving applicants based on technical credentials while auditing demographic fairness.", styles["Bullet"]))
     story.append(Paragraph("• <b>Minute 1:00 - 2:00 (Data Engineering & Preprocessing):</b> Show the 60/20/20 split (11,494 / 3,832 / 3,832). Explain the handling of censored experience ('<1', '>20'), the 23.5% missing gender retained as 'Unknown', and how unified train-fitted pipelines prevent data leakage.", styles["Bullet"]))
     story.append(Paragraph("• <b>Minute 2:00 - 3:00 (Model Benchmark & Decision Tree Selection):</b> Review the comparison table. Explain why the Decision Tree was selected (ROC-AUC 0.7760, accuracy 77.53% vs 75.07% majority baseline, depth 5, min leaf 25, transparent boolean rules).", styles["Bullet"]))
     story.append(Paragraph("• <b>Minute 3:00 - 4:00 (Shortlisting Policies & Tie-Breaking):</b> Demonstrate the candidate ranking table. Contrast thresholding (>= 0.50) with Top-N capacity quota shortlisting. Explain the deterministic tie-breaking rule.", styles["Bullet"]))

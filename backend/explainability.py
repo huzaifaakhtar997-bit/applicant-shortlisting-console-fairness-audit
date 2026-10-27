@@ -17,7 +17,7 @@ LABELS = {
     "major_discipline": "Major discipline",
     "company_size": "Company size",
     "company_type": "Company type",
-    "last_new_job": "Years since job change",
+    "last_new_job": "Years since last job transition",
 }
 
 

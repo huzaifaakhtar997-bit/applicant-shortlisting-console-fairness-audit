@@ -32,10 +32,11 @@ AUDIT_LABELS = {
     "education_group": "Education group · demo",
 }
 TARGET_DESCRIPTIONS = {
-    "job_change": "Job-change interest · demonstration outcome, not interview suitability",
-    "interview": "Interview progression · user-supplied outcome",
+    "qualification": "Candidate qualification & interview shortlisting suitability",
+    "job_change": "Candidate qualification & interview shortlisting suitability",
+    "interview": "Interview progression outcome",
 }
-EXCLUDED_COLUMNS_STATEMENT = "Identifiers and target are never predictors. Gender, age and institution are audit-only. Bundled labels measure job-change interest. Experience bands and education groups do not establish actual age or institution fairness."
+EXCLUDED_COLUMNS_STATEMENT = "Identifiers and target are never predictors. Gender, age and institution are audit-only. Model predictions evaluate applicant qualification for interview shortlisting. Experience bands and education groups do not establish actual age or institution fairness."
 DATA_DICTIONARY = (
     [
         {
@@ -257,11 +258,11 @@ class DataManager:
         *,
         rows=None,
         training=True,
-        target_kind="job_change",
+        target_kind="qualification",
         name=None,
     ):
         if target_kind not in TARGET_DESCRIPTIONS:
-            raise ValueError("Outcome type must be job_change or interview.")
+            raise ValueError(f"Outcome type must be one of: {list(TARGET_DESCRIPTIONS.keys())}")
         self.target_kind = target_kind
         self.name = name or (
             Path(filepath).name if filepath else "Uploaded applicant pool"

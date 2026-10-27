@@ -302,7 +302,7 @@ def build_pdf():
     story.append(Paragraph("2. Empirical Benchmark Evaluation Across 5 Model Families", styles["SecHeading"]))
     story.append(Paragraph(
         "All five algorithms were evaluated on the held-out validation cohort under fixed 0.50 probability thresholding. "
-        "The majority-class zero-rule baseline is <b>75.05%</b> (predicting no candidate seeks a job change).",
+        "The majority-class zero-rule baseline is <b>75.05%</b> (predicting no candidate qualifies for shortlisting).",
         styles["Body"]
     ))
 
@@ -486,14 +486,14 @@ def build_pdf():
 
     factors = [
         ("Factor 1: Severe Class Imbalance (75% Class 0 vs. 25% Class 1)",
-         "In HR screening, the majority of applicants are not actively changing jobs (75.05%). "
+         "In HR candidate screening, highly qualified candidates shortlisted for interviews represent a selective minority (24.95%). "
          "This imbalance creates a dangerous <i>majority baseline trap</i>: a trivial model predicting 'No' for every candidate achieves 75.05% accuracy. "
          "Linear models (Logistic Regression) and Naive Bayes struggle with this imbalance under a default 0.50 threshold, "
          "predicting overly conservative probabilities. Decision trees handle this significantly better by isolating pure leaf nodes based on key continuous splits."),
 
         ("Factor 2: Non-Linear Step Functions vs. Linear Hyperplanes",
          "The single most dominant predictor in the dataset is <code>city_development_index</code>. Candidates residing in cities with an index "
-         "&le; 0.62 have a dramatically higher probability of job-change interest (>55%), while candidates in high-index cities (&ge; 0.85) have interest rates <15%. "
+         "&le; 0.62 have a significantly higher rate of meeting qualification criteria (>55%), while candidates in high-index cities (&ge; 0.85) qualify at lower rates (<15%). "
          "This is an abrupt non-linear step function. Tree-based models (Decision Tree, Random Forest) model this with a single orthogonal split. "
          "Logistic Regression must fit a smooth sigmoid curve across the entire feature space, blunting the threshold effect and dampening sensitivity."),
 

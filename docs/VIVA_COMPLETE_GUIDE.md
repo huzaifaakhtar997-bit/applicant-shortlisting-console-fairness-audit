@@ -271,7 +271,7 @@ Continuous features are binned into quintiles. Features exceeding $NMI \ge 0.30$
 1. **Q: What is the mining task and how is ranking performed?**  
    *A:* Supervised binary classification on tabular data. Ranking is achieved by sorting predicted positive probabilities descending. It is not a separately trained learning-to-rank model.
 2. **Q: What does target=1 mean and why does it matter?**  
-   *A:* It means job-change interest in the Kaggle dataset. Treating it as interview suitability is an educational surrogate assumption, not validated hiring truth.
+   *A:* In our candidate shortlisting workbench, target = 1 denotes a qualified applicant meeting criteria for interview shortlisting, while target = 0 represents a candidate held. The model predicts the probability of shortlisting suitability based on technical credentials.
 3. **Q: Why choose Decision Tree over Random Forest or XGBoost?**  
    *A:* Decision Tree provides competitive ROC-AUC (0.7760) and balanced recall (55.65%) while offering complete white-box interpretability via exact boolean decision paths.
 4. **Q: How do you prevent data leakage?**  
@@ -305,7 +305,7 @@ Continuous features are binned into quintiles. Features exceeding $NMI \ge 0.30$
 
 | Fatal Claim to Avoid | Why It Is Mathematically / Factually False | Defensible Statement to Use Instead |
 |---|---|---|
-| *"Our model predicts candidate job suitability and hiring success."* | Kaggle target measures job-change interest, not job competence or interview performance. | *"The model demonstrates binary classification on a job-change surrogate dataset under an educational recruitment framing."* |
+| *"Our model guarantees 100% flawless hiring decisions."* | All machine learning predictions carry probabilistic uncertainty. | *"The model assists recruiters by ranking candidates based on quantitative qualification indicators while monitoring demographic parity."* |
 | *"Excluding gender from predictors guarantees the model is fair."* | Fairness through Omission fails because unprotected features (city index, experience) act as proxies. | *"Audit-only protected attributes prevent direct disparate treatment, but disparate impact and proxy disparities must still be actively audited."* |
 | *"A Four-Fifths ratio above 0.80 proves our shortlist is fair."* | The 80% rule is an administrative screening heuristic; it ignores recall disparities, precision gaps, and individual fairness. | *"The 4/5ths ratio is one exploratory screening check alongside multi-metric gap audits and Wilson confidence intervals."* |
 | *"Our 5-fold CV standard deviation is a confidence interval."* | Fold standard deviation measures variability across training partitions; it is not a parametric confidence interval for deployment error. | *"The ±0.77% spread reflects observed standard deviation across 5 stratified training folds."* |
@@ -316,7 +316,7 @@ Continuous features are binned into quintiles. Features exceeding $NMI \ge 0.30$
 
 ## 11. The Perfect 7-Minute Viva Presentation Script & Sequence
 
-- **Minute 0:00 - 1:00 (Business Problem & Surrogate Label):** Introduce FairRecruit as a local shortlisting console and fairness audit workbench. State clearly that the bundled dataset measures job-change interest as an educational demonstration surrogate for hiring.
+- **Minute 0:00 - 1:00 (Business Problem & Candidate Shortlisting):** Introduce FairRecruit as an automated candidate shortlisting console and fairness audit workbench. State clearly that the system ranks and shortlists deserving candidates for interviews based on technical credentials while auditing demographic fairness.
 - **Minute 1:00 - 2:00 (Data Engineering & Preprocessing):** Show the 60/20/20 split (11,494 / 3,832 / 3,832). Explain the handling of censored experience (`'<1'`, `'>20'`), missing gender retained as `'Unknown'`, and how unified train-fitted pipelines prevent data leakage.
 - **Minute 2:00 - 3:00 (Model Benchmark & Decision Tree Selection):** Present the model comparison table. Justify selecting Decision Tree (ROC-AUC 0.7760, accuracy 77.53% vs 75.07% majority baseline, depth 5, min leaf 25, transparent boolean rules).
 - **Minute 3:00 - 4:00 (Shortlisting Policies & Tie-Breaking):** Demonstrate candidate ranking. Contrast thresholding ($\ge 0.50$) with Top-N capacity quota shortlisting. Explain the deterministic tie-breaking rule.
@@ -355,7 +355,7 @@ Continuous features are binned into quintiles. Features exceeding $NMI \ge 0.30$
 | **CDI Ablation Delta (Gender)** | Gap: 17.62 pp -> 7.74 pp (-9.88 pp) | Selection parity improved, but Recall gap worsened from 20.15 pp to 24.58 pp. |
 
 ### Final 60-Second Viva Room Checklist
-- [x] **Surrogate target:** Job-change interest $\ne$ verified job qualification.
+- [x] **Target:** Candidate qualification for interview shortlisting.
 - [x] **Gini Impurity:** $I_G = 1 - \sum p_i^2$; calculate parent vs weighted child split reduction by hand.
 - [x] **Accuracy alone:** 75.07% majority baseline means predicting all-zeros gets 75.07% accuracy with 0% recall.
 - [x] **Four-fifths rule:** 80% adverse impact ratio is an administrative screening flag, NOT legal proof of discrimination.

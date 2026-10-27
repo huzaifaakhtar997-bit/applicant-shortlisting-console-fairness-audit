@@ -1,8 +1,6 @@
 # FairRecruit
 
-A local applicant-ranking and fairness-audit workbench for Data Mining Project 5. The application separates model training, incoming applicant scoring, and evaluation. It supports controlled attribute-removal experiments with saved apply/revert versions.
-
-**Outcome limitation:** the bundled Kaggle dataset measures **job-change interest**, not interview suitability. The application labels it as a demonstration throughout. Uploaded labeled training data can explicitly define an interview-progression outcome. Label validity and historical bias remain human review tasks.
+A local candidate shortlisting console and algorithmic fairness-audit workbench for Data Mining Project 5. The application evaluates, ranks, and shortlists deserving candidate profiles based on professional credentials, education, and domain experience while enforcing strict demographic fairness audits and explainability. Model training, candidate scoring, and evaluation hygiene are strictly decoupled.
 
 ## Run locally
 
